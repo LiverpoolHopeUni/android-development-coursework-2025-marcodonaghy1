@@ -19,15 +19,29 @@
             android:id="@+id/action_FirstFragment_to_SecondFragment"
             app:destination="@id/SecondFragment" />
 
+        <action
+            android:id="@+id/action_FirstFragment_to_FriendResponseFragment"
+            app:destination="@id/FriendResponseFragment" />
+
     </fragment>
 
     <fragment
         android:id="@+id/AddEventFragment"
         android:name="uk.ac.hope.mcse.android.coursework.AddEventFragment"
         android:label="@string/add_event_fragment_label"
-        tools:layout="@layout/fragment_add_event" />
+        tools:layout="@layout/fragment_add_event">
 
+        <action
+            android:id="@+id/action_AddEventFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment" />
 
+    </fragment>
+
+    <fragment
+        android:id="@+id/FriendResponseFragment"
+        android:name="uk.ac.hope.mcse.android.coursework.RespondFragment"
+        android:label="@string/friend_response_fragment_label"
+        tools:layout="@layout/fragment_respond" />
 
     <fragment
         android:id="@+id/SecondFragment"
