@@ -12,46 +12,41 @@
         tools:layout="@layout/fragment_first">
 
         <action
-            android:id="@+id/action_FirstFragment_to_AddEventFragment"
-            app:destination="@id/AddEventFragment" />
-
-        <action
             android:id="@+id/action_FirstFragment_to_SecondFragment"
             app:destination="@id/SecondFragment" />
-
+            
         <action
-            android:id="@+id/action_FirstFragment_to_FriendResponseFragment"
-            app:destination="@id/FriendResponseFragment" />
+            android:id="@+id/action_FirstFragment_to_RespondFragment"
+            app:destination="@id/RespondFragment" />
 
     </fragment>
-
-    <fragment
-        android:id="@+id/AddEventFragment"
-        android:name="uk.ac.hope.mcse.android.coursework.AddEventFragment"
-        android:label="@string/add_event_fragment_label"
-        tools:layout="@layout/fragment_add_event">
-
-        <action
-            android:id="@+id/action_AddEventFragment_to_FirstFragment"
-            app:destination="@id/FirstFragment" />
-
-    </fragment>
-
-    <fragment
-        android:id="@+id/FriendResponseFragment"
-        android:name="uk.ac.hope.mcse.android.coursework.RespondFragment"
-        android:label="@string/friend_response_fragment_label"
-        tools:layout="@layout/fragment_respond" />
 
     <fragment
         android:id="@+id/SecondFragment"
         android:name="uk.ac.hope.mcse.android.coursework.SecondFragment"
         android:label="@string/second_fragment_label"
-        tools:layout="@layout/fragment_second"
-        app:startDestination="@id/AddEventFragment">
+        tools:layout="@layout/fragment_second">
 
         <action
             android:id="@+id/action_SecondFragment_to_FirstFragment"
-            app:destination="@id/FirstFragment" />
+            app:destination="@id/FirstFragment"
+            app:popUpTo="@id/FirstFragment"
+            app:popUpToInclusive="true" />
+
     </fragment>
+
+    <fragment
+        android:id="@+id/RespondFragment"
+        android:name="uk.ac.hope.mcse.android.coursework.RespondFragment"
+        android:label="@string/friend_response_fragment_label"
+        tools:layout="@layout/fragment_respond">
+
+        <action
+            android:id="@+id/action_RespondFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment"
+            app:popUpTo="@id/FirstFragment"
+            app:popUpToInclusive="true" />
+
+    </fragment>
+
 </navigation>

@@ -1,5 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Align N Shine</string>
+    <string name="app_name">Event Manager</string>
     <string name="action_settings">Settings</string>
     <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label">First Fragment</string>
@@ -7,28 +8,25 @@
     <string name="add_event_fragment_label">Add Event</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
-    <string name="friend_response_fragment_label">Respond to Event</string>
+    <string name="friend_response_fragment_label">Friend Response</string>
 
     <string name="fab_add_event">Add Event</string>
+    <string name="clear_all_events">Clear All Events</string>
 
+    <string name="create_new_event">Create New Event</string>
     <string name="event_name_hint">Event Name</string>
     <string name="select_date_button_text">Select Date</string>
     <string name="select_time_button_text">Select Time</string>
     <string name="save_event_button_text">Save Event</string>
-
-
-    <string name="lorem_ipsum">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
-        volutpat, dolor id interdum ullamcorper, risus dolor egestas lectus, sit amet mattis purus
-        dui nec risus. Maecenas non sodales nisi, vel dictum dolor. Class aptent taciti sociosqu ad
-        litora torquent per conubia nostra, per inceptos himenaeos. Suspendisse blandit eleifend
-        diam, vel rutrum tellus vulputate quis. Aliquam eget libero aliquet, imperdiet nisl a,
-        ornare ex. Sed rhoncus est ut libero porta lobortis. Fusce in dictum tellus.\n\n
-        Suspendisse interdum ornare ante. Aliquam nec cursus lorem. Morbi id magna felis. Vivamus
-        egestas, est a condimentum egestas, turpis nisl iaculis ipsum, in dictum tellus dolor sed
-        neque. Morbi tellus erat, dapibus ut sem a, iaculis tincidunt dui. Interdum et malesuada
-        fames ac ante ipsum primis in faucibus. Curabitur et eros porttitor, ultricies urna vitae,
-        molestie nibh. Phasellus at commodo eros, non aliquet metus. Sed maximus nisl nec dolor
-        bibendum, vel congue leo egestas.\n\n
-    </string>
+    <string name="cancel">Cancel</string>
+    <string name="your_events">Your Events</string>
+    <string name="respond_to_event">Respond to Event</string>
+    <string name="no_events_yet">No events created yet. Tap the + button to add your first event!</string>
+    <string name="no_event_selected">No event selected. Please go back and select an event to respond to.</string>
+    <string name="select_event_to_respond">Select an event to respond to</string>
+    <string name="your_response">Your Response</string>
+    <string name="enter_response_hint">Enter your response here...</string>
+    <string name="submit_response">Submit Response</string>
+    <string name="delete_event">Delete Event</string>
+    <string name="confirm_delete">Are you sure you want to delete this event?</string>
 </resources>

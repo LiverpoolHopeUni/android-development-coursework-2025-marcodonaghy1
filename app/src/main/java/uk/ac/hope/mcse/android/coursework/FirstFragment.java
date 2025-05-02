@@ -14,7 +14,8 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import uk.ac.hope.mcse.android.coursework.databinding.FragmentFirstBinding;
 
@@ -23,66 +24,144 @@ import uk.ac.hope.mcse.android.coursework.databinding.FragmentFirstBinding;
  */
 public class FirstFragment extends Fragment {
 
+    private static final String PREF_NAME = "EventPrefs";
+    private static final String KEY_EVENT_LIST = "event_list";
+    private static final String KEY_SELECTED_EVENT = "selected_event";
+    private static final String EVENT_SEPARATOR = "|||"; // Unique separator for events
+    
     private FragmentFirstBinding binding;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private SharedPreferences sharedPreferences;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Initialize SharedPreferences in onCreate
-        sharedPreferences = requireActivity().getSharedPreferences("EventPrefs", Context.MODE_PRIVATE);
+        sharedPreferences = requireActivity().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
     @Override
-    public View onCreateView(
-            @NonNull LayoutInflater inflater, ViewGroup container,
-            Bundle savedInstanceState
-    ) {
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentFirstBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
 
+    @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        // Set up click listeners first for better responsiveness
-        setupClickListeners();
         
-        // Load event list in background
         loadEventList();
+        setupClickListeners();
+        animateViewsIn();
+    }
+
+    private void animateViewsIn() {
+        binding.textviewFirst.setAlpha(0f);
+        binding.buttonClearEvents.setAlpha(0f);
+        binding.buttonRespondEvent.setAlpha(0f);
+        binding.fab.setAlpha(0f);
+
+        binding.textviewFirst.animate()
+                .alpha(1f)
+                .setDuration(500)
+                .start();
+
+        binding.buttonClearEvents.animate()
+                .alpha(1f)
+                .setDuration(500)
+                .setStartDelay(200)
+                .start();
+
+        binding.buttonRespondEvent.animate()
+                .alpha(1f)
+                .setDuration(500)
+                .setStartDelay(400)
+                .start();
+
+        binding.fab.animate()
+                .alpha(1f)
+                .setDuration(500)
+                .setStartDelay(600)
+                .start();
     }
 
     private void setupClickListeners() {
-        binding.fab.setOnClickListener(v ->
-                NavHostFragment.findNavController(FirstFragment.this)
-                        .navigate(R.id.action_FirstFragment_to_AddEventFragment));
+        binding.buttonClearEvents.setOnClickListener(v -> {
+            animateButtonClick(v);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.remove(KEY_EVENT_LIST);
+            editor.apply();
+            binding.textviewFirst.setText(R.string.no_events_yet);
+            Toast.makeText(requireContext(), "All events cleared", Toast.LENGTH_SHORT).show();
+        });
 
-        binding.buttonRespondEvent.setOnClickListener(v ->
-                NavHostFragment.findNavController(FirstFragment.this)
-                        .navigate(R.id.action_FirstFragment_to_FriendResponseFragment));
+        binding.buttonRespondEvent.setOnClickListener(v -> {
+            animateButtonClick(v);
+            NavHostFragment.findNavController(FirstFragment.this)
+                    .navigate(R.id.action_FirstFragment_to_RespondFragment);
+        });
+
+        binding.fab.setOnClickListener(v -> 
+            NavHostFragment.findNavController(this)
+                .navigate(R.id.action_FirstFragment_to_SecondFragment));
+    }
+
+    private void animateButtonClick(View view) {
+        view.animate()
+                .scaleX(0.95f)
+                .scaleY(0.95f)
+                .setDuration(100)
+                .withEndAction(() -> view.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(100)
+                        .start())
+                .start();
     }
 
     private void loadEventList() {
-        // Run SharedPreferences operation in background
-        new Thread(() -> {
-            final String eventList = sharedPreferences.getString("event_list", "");
+        executorService.execute(() -> {
+            final String eventList = sharedPreferences.getString(KEY_EVENT_LIST, "");
             
-            // Update UI on main thread
             mainHandler.post(() -> {
                 if (eventList.isEmpty()) {
-                    binding.textviewFirst.setText("No events created yet.");
+                    binding.textviewFirst.setText(R.string.no_events_yet);
+                    binding.textviewFirst.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
                 } else {
-                    binding.textviewFirst.setText(eventList);
+                    String[] events = eventList.split(EVENT_SEPARATOR);
+                    StringBuilder formattedEvents = new StringBuilder();
+                    
+                    for (String event : events) {
+                        if (!event.trim().isEmpty()) {
+                            String[] parts = event.split("\n");
+                            if (parts.length >= 3) {
+                                formattedEvents.append(parts[0])
+                                        .append("\n")
+                                        .append(parts[1])
+                                        .append(" at ")
+                                        .append(parts[2])
+                                        .append("\n\n");
+                            }
+                        }
+                    }
+                    
+                    binding.textviewFirst.setText(formattedEvents.toString().trim());
+                    binding.textviewFirst.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
                 }
             });
-        }).start();
+        });
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown();
     }
 
 }
