@@ -29,4 +29,11 @@
     <string name="submit_response">Submit Response</string>
     <string name="delete_event">Delete Event</string>
     <string name="confirm_delete">Are you sure you want to delete this event?</string>
+    <string name="priority_hint">Select Priority</string>
+
+    <string-array name="priority_levels">
+        <item>High</item>
+        <item>Medium</item>
+        <item>Low</item>
+    </string-array>
 </resources>

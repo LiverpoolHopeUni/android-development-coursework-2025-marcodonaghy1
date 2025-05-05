@@ -7,10 +7,13 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Toast;
+import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -46,6 +49,7 @@ public class SecondFragment extends Fragment {
     private MaterialButton buttonSelectDate;
     private MaterialButton buttonSelectTime;
     private TextInputEditText editTextEventName;
+    private Spinner spinnerPriority;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -74,6 +78,16 @@ public class SecondFragment extends Fragment {
         editTextEventName = view.findViewById(R.id.editTextEventName);
         buttonSelectDate = view.findViewById(R.id.buttonSelectDate);
         buttonSelectTime = view.findViewById(R.id.buttonSelectTime);
+        spinnerPriority = view.findViewById(R.id.spinnerPriority);
+
+        // Set up priority spinner
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.priority_levels,
+            android.R.layout.simple_spinner_item
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerPriority.setAdapter(adapter);
 
         // Set initial date and time
         updateDateButtonText();
@@ -186,9 +200,17 @@ public class SecondFragment extends Fragment {
 
     private void saveEventDetails() {
         // Get input values
-        String eventName = editTextEventName.getText().toString().trim();
-        String eventDate = buttonSelectDate.getText().toString();
-        String eventTime = buttonSelectTime.getText().toString();
+        String eventName = binding.editTextEventName.getText().toString().trim();
+        String eventDate = binding.buttonSelectDate.getText().toString();
+        String eventTime = binding.buttonSelectTime.getText().toString();
+        String priority = spinnerPriority.getSelectedItem().toString();
+
+        // Debug logging
+        Log.d("SecondFragment", "=== SAVING EVENT ===");
+        Log.d("SecondFragment", "Event Name: [" + eventName + "]");
+        Log.d("SecondFragment", "Event Date: [" + eventDate + "]");
+        Log.d("SecondFragment", "Event Time: [" + eventTime + "]");
+        Log.d("SecondFragment", "Priority: [" + priority + "]");
 
         // Validate inputs
         if (eventName.isEmpty()) {
@@ -206,30 +228,44 @@ public class SecondFragment extends Fragment {
             return;
         }
 
-        // Build event string
-        String newEvent = eventName + " – " + eventDate + " – " + eventTime;
+        // Build event string with correct format
+        String newEvent = eventName + "\n" + eventDate + "\n" + eventTime + "\n" + priority;
+        Log.d("SecondFragment", "New Event String: [" + newEvent + "]");
 
         // Get existing events
-        String existingEvents = sharedPreferences.getString("event_list", "");
+        String existingEvents = sharedPreferences.getString(KEY_EVENT_LIST, "");
+        Log.d("SecondFragment", "Existing Events: [" + existingEvents + "]");
 
-        // Combine with new event
-        String updatedEvents = existingEvents.isEmpty() ? newEvent : existingEvents + "\n" + newEvent;
+        // Combine with new event using the correct separator
+        String updatedEvents = existingEvents.isEmpty() ? newEvent : existingEvents + EVENT_SEPARATOR + newEvent;
+        Log.d("SecondFragment", "Updated Events: [" + updatedEvents + "]");
 
         // Save to SharedPreferences
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString("event_list", updatedEvents);
-        editor.apply();
+        editor.putString(KEY_EVENT_LIST, updatedEvents);
+        boolean success = editor.commit();
+        Log.d("SecondFragment", "Save Success: " + success);
 
-        // Show success message
-        Toast.makeText(requireContext(), "Event saved!", Toast.LENGTH_SHORT).show();
+        // Verify the save
+        String savedEvents = sharedPreferences.getString(KEY_EVENT_LIST, "");
+        Log.d("SecondFragment", "Verified Saved Events: [" + savedEvents + "]");
 
-        // Clear form
-        editTextEventName.setText("");
-        buttonSelectDate.setText(R.string.select_date_button_text);
-        buttonSelectTime.setText(R.string.select_time_button_text);
+        if (success) {
+            // Show success message
+            Toast.makeText(requireContext(), "Event saved!", Toast.LENGTH_SHORT).show();
 
-        // Navigate back
-        NavHostFragment.findNavController(SecondFragment.this).navigateUp();
+            // Clear form
+            binding.editTextEventName.setText("");
+            binding.buttonSelectDate.setText(R.string.select_date_button_text);
+            binding.buttonSelectTime.setText(R.string.select_time_button_text);
+            spinnerPriority.setSelection(0); // Reset to first item
+
+            // Navigate back with popUpTo to ensure FirstFragment is recreated
+            NavHostFragment.findNavController(SecondFragment.this)
+                    .navigate(R.id.action_SecondFragment_to_FirstFragment);
+        } else {
+            Toast.makeText(requireContext(), "Failed to save event", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showError(View view, String message) {
@@ -253,10 +289,10 @@ public class SecondFragment extends Fragment {
     }
 
     private void updateDateButtonText() {
-        buttonSelectDate.setText(dateFormat.format(selectedDate.getTime()));
+        binding.buttonSelectDate.setText(dateFormat.format(selectedDate.getTime()));
     }
 
     private void updateTimeButtonText() {
-        buttonSelectTime.setText(timeFormat.format(selectedTime.getTime()));
+        binding.buttonSelectTime.setText(timeFormat.format(selectedTime.getTime()));
     }
 }
