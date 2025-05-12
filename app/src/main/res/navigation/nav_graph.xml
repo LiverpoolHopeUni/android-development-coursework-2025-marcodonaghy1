@@ -19,6 +19,10 @@
             android:id="@+id/action_FirstFragment_to_RespondFragment"
             app:destination="@id/RespondFragment" />
 
+        <action
+            android:id="@+id/action_FirstFragment_to_CompletedEventsFragment"
+            app:destination="@id/CompletedEventsFragment" />
+
     </fragment>
 
     <fragment
@@ -26,6 +30,22 @@
         android:name="uk.ac.hope.mcse.android.coursework.SecondFragment"
         android:label="@string/second_fragment_label"
         tools:layout="@layout/fragment_second">
+
+        <argument
+            android:name="eventName"
+            app:argType="string" />
+
+        <argument
+            android:name="eventDate"
+            app:argType="string" />
+
+        <argument
+            android:name="eventTime"
+            app:argType="string" />
+
+        <argument
+            android:name="eventPriority"
+            app:argType="string" />
 
         <action
             android:id="@+id/action_SecondFragment_to_FirstFragment"
@@ -48,5 +68,11 @@
             app:popUpToInclusive="true" />
 
     </fragment>
+
+    <fragment
+        android:id="@+id/CompletedEventsFragment"
+        android:name="uk.ac.hope.mcse.android.coursework.CompletedEventsFragment"
+        android:label="Completed Events"
+        tools:layout="@layout/fragment_completed_events" />
 
 </navigation>

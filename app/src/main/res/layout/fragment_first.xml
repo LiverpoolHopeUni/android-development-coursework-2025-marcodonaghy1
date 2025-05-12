@@ -27,6 +27,16 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <EditText
+            android:id="@+id/searchEventField"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Search events"
+            app:layout_constraintTop_toBottomOf="@id/textViewTitle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
         <Spinner
             android:id="@+id/spinnerSortEvents"
             android:layout_width="wrap_content"
@@ -37,7 +47,7 @@
             android:paddingEnd="12dp"
             android:backgroundTint="?attr/colorPrimary"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/textViewTitle"
+            app:layout_constraintTop_toBottomOf="@id/searchEventField"
             app:layout_constraintBottom_toTopOf="@id/recyclerViewEvents" />
 
         <com.google.android.material.button.MaterialButton
@@ -47,7 +57,7 @@
             android:text="Select Event"
             android:layout_marginTop="8dp"
             android:layout_marginEnd="16dp"
-            app:layout_constraintTop_toBottomOf="@id/textViewTitle"
+            app:layout_constraintTop_toBottomOf="@id/searchEventField"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/spinnerSortEvents"
             app:layout_constraintBottom_toTopOf="@id/recyclerViewEvents" />
@@ -77,5 +87,15 @@
             app:srcCompat="@drawable/ic_add" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabCompleted"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:contentDescription="View Completed Events"
+        app:srcCompat="@drawable/ic_done"
+        app:layout_anchor="@id/recyclerViewEvents"
+        app:layout_anchorGravity="bottom|start" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

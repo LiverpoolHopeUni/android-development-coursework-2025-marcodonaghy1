@@ -50,6 +50,8 @@ public class SecondFragment extends Fragment {
     private Calendar selectedTime = Calendar.getInstance();
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+    private final String currentDate = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Calendar.getInstance().getTime());
+    private final String currentTime = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(Calendar.getInstance().getTime());
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private SharedPreferences sharedPreferences;
@@ -111,8 +113,18 @@ public class SecondFragment extends Fragment {
         priorityDropdown.setText(priorities[0], false); // Set default value
 
         // Set initial date and time
-        updateDateButtonText();
-        updateTimeButtonText();
+        buttonSelectDate.setText(currentDate);
+        buttonSelectTime.setText(currentTime);
+
+        // Date picker
+        binding.buttonSelectDate.setOnClickListener(v -> {
+            animateButtonClick(v, this::showDatePicker);
+        });
+
+        // Time picker
+        binding.buttonSelectTime.setOnClickListener(v -> {
+            animateButtonClick(v, this::showTimePicker);
+        });
     }
 
     private void animateViewsIn() {
@@ -185,44 +197,39 @@ public class SecondFragment extends Fragment {
     }
 
     private void showDatePicker() {
+        String[] dateParts = currentDate.split("/");
+        int year = Integer.parseInt(dateParts[2]);
+        int month = Integer.parseInt(dateParts[1]) - 1;
+        int day = Integer.parseInt(dateParts[0]);
+
         DatePickerDialog datePickerDialog = new DatePickerDialog(
-                requireContext(),
-                R.style.CustomTimePickerDialog,
-                null,
-                selectedDate.get(Calendar.YEAR),
-                selectedDate.get(Calendar.MONTH),
-                selectedDate.get(Calendar.DAY_OF_MONTH)
+            requireContext(),
+            android.R.style.Theme_Holo_Light_Dialog,
+            (view, selectedYear, selectedMonth, selectedDay) -> {
+                String formattedDate = String.format("%02d/%02d/%04d", selectedDay, selectedMonth + 1, selectedYear);
+                binding.buttonSelectDate.setText(formattedDate);
+                binding.buttonSelectDate.setIconTintResource(R.color.black);
+            },
+            year, month, day
         );
-
-        datePickerDialog.setButton(DatePickerDialog.BUTTON_POSITIVE, "Apply", (dialog, which) -> {
-            DatePickerDialog picker = (DatePickerDialog) dialog;
-            selectedDate.set(picker.getDatePicker().getYear(),
-                           picker.getDatePicker().getMonth(),
-                           picker.getDatePicker().getDayOfMonth());
-            updateDateButtonText();
-            binding.buttonSelectDate.setIconTintResource(R.color.black);
-        });
-
-        datePickerDialog.setButton(DatePickerDialog.BUTTON_NEGATIVE, "Cancel", (dialog, which) -> dialog.dismiss());
         datePickerDialog.show();
     }
 
     private void showTimePicker() {
-        TimePickerDialog timePickerDialog = new TimePickerDialog(
-                requireContext(),
-                R.style.CustomTimePickerDialog,
-                (view, hourOfDay, minute) -> {
-                    selectedTime.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                    selectedTime.set(Calendar.MINUTE, minute);
-                    updateTimeButtonText();
-                    binding.buttonSelectTime.setIconTintResource(R.color.black);
-                },
-                selectedTime.get(Calendar.HOUR_OF_DAY),
-                selectedTime.get(Calendar.MINUTE),
-                true
-        );
+        String[] timeParts = currentTime.split(":");
+        int hour = Integer.parseInt(timeParts[0]);
+        int minute = Integer.parseInt(timeParts[1]);
 
-        timePickerDialog.setButton(TimePickerDialog.BUTTON_NEGATIVE, "Cancel", (dialog, which) -> dialog.dismiss());
+        TimePickerDialog timePickerDialog = new TimePickerDialog(
+            requireContext(),
+            android.R.style.Theme_Holo_Light_Dialog,
+            (view, selectedHour, selectedMinute) -> {
+                String formattedTime = String.format("%02d:%02d", selectedHour, selectedMinute);
+                binding.buttonSelectTime.setText(formattedTime);
+                binding.buttonSelectTime.setIconTintResource(R.color.black);
+            },
+            hour, minute, true
+        );
         timePickerDialog.show();
     }
 
@@ -281,8 +288,15 @@ public class SecondFragment extends Fragment {
             SimpleDateFormat dateTimeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
             eventDateTime.setTime(dateTimeFormat.parse(eventDate + " " + eventTime));
 
-            // Calculate trigger time (1 minute from now for testing)
-            long triggerTime = System.currentTimeMillis() + 60_000; // 1 minute from now
+            // Calculate trigger time (1 hour before the event)
+            eventDateTime.add(Calendar.HOUR_OF_DAY, -1);
+            long triggerTime = eventDateTime.getTimeInMillis();
+
+            // Check if the trigger time is in the past
+            if (triggerTime <= System.currentTimeMillis()) {
+                Log.d("SecondFragment", "Event is less than 1 hour away, skipping alarm scheduling");
+                return;
+            }
 
             // Create intent for the broadcast receiver
             Intent intent = new Intent(requireContext(), EventReminderReceiver.class);
@@ -333,10 +347,8 @@ public class SecondFragment extends Fragment {
             binding.buttonSelectTime.setText(R.string.select_time_button_text);
             priorityDropdown.setText(getString(R.string.select_priority_button_text), false);
 
-
-            // Navigate back with popUpTo to ensure FirstFragment is recreated
-            NavHostFragment.findNavController(SecondFragment.this)
-                    .navigate(R.id.action_SecondFragment_to_FirstFragment);
+            // Navigate up in the back stack
+            NavHostFragment.findNavController(SecondFragment.this).navigateUp();
         } else {
             Toast.makeText(requireContext(), "Failed to save event", Toast.LENGTH_SHORT).show();
         }
@@ -360,13 +372,5 @@ public class SecondFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         executorService.shutdown();
-    }
-
-    private void updateDateButtonText() {
-        binding.buttonSelectDate.setText(dateFormat.format(selectedDate.getTime()));
-    }
-
-    private void updateTimeButtonText() {
-        binding.buttonSelectTime.setText(timeFormat.format(selectedTime.getTime()));
     }
 }
