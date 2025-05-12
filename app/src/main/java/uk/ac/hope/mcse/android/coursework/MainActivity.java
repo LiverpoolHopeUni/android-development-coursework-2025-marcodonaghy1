@@ -18,6 +18,7 @@ public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
+    private NavController navController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,9 +29,20 @@ public class MainActivity extends AppCompatActivity {
 
         setSupportActionBar(binding.toolbar);
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
+        navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+
+        // Add destination changed listener to handle toolbar titles
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            if (destination.getId() == R.id.FirstFragment) {
+                binding.toolbar.setTitle("Home 🏠");
+            } else if (destination.getId() == R.id.SecondFragment) {
+                binding.toolbar.setTitle("Create Event \uD83D\uDDD3\uFE0F");
+            } else if (destination.getId() == R.id.RespondFragment) {
+                binding.toolbar.setTitle("Friend Response");
+            }
+        });
     }
 
     @Override
@@ -57,7 +69,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         return NavigationUI.navigateUp(navController, appBarConfiguration)
                 || super.onSupportNavigateUp();
     }

@@ -13,7 +13,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
-import android.widget.Spinner;
+import android.widget.AutoCompleteTextView;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.os.Build;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -23,6 +29,7 @@ import uk.ac.hope.mcse.android.coursework.databinding.FragmentSecondBinding;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,7 +56,7 @@ public class SecondFragment extends Fragment {
     private MaterialButton buttonSelectDate;
     private MaterialButton buttonSelectTime;
     private TextInputEditText editTextEventName;
-    private Spinner spinnerPriority;
+    private AutoCompleteTextView priorityDropdown;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -57,6 +64,19 @@ public class SecondFragment extends Fragment {
         sharedPreferences = requireActivity().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         selectedDate = Calendar.getInstance();
         selectedTime = Calendar.getInstance();
+
+        // Create notification channel for Android 8.0 and above
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                "event_channel",
+                "Upcoming Events",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Notifies you when your events are coming up");
+            
+            NotificationManager notificationManager = requireActivity().getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
     }
 
     @Override
@@ -78,16 +98,17 @@ public class SecondFragment extends Fragment {
         editTextEventName = view.findViewById(R.id.editTextEventName);
         buttonSelectDate = view.findViewById(R.id.buttonSelectDate);
         buttonSelectTime = view.findViewById(R.id.buttonSelectTime);
-        spinnerPriority = view.findViewById(R.id.spinnerPriority);
+        priorityDropdown = view.findViewById(R.id.spinnerPriority);
 
-        // Set up priority spinner
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+        // Set up priority dropdown
+        String[] priorities = getResources().getStringArray(R.array.priority_levels);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
             requireContext(),
-            R.array.priority_levels,
-            android.R.layout.simple_spinner_item
+            R.layout.dropdown_item,
+            priorities
         );
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerPriority.setAdapter(adapter);
+        priorityDropdown.setAdapter(adapter);
+        priorityDropdown.setText(priorities[0], false); // Set default value
 
         // Set initial date and time
         updateDateButtonText();
@@ -99,6 +120,7 @@ public class SecondFragment extends Fragment {
         binding.eventNameLayout.setAlpha(0f);
         binding.buttonSelectDate.setAlpha(0f);
         binding.buttonSelectTime.setAlpha(0f);
+        binding.priorityLayout.setAlpha(0f);
         binding.buttonSaveEvent.setAlpha(0f);
 
         // Create a single animation set
@@ -114,9 +136,15 @@ public class SecondFragment extends Fragment {
                                         .alpha(1f)
                                         .setDuration(ANIMATION_DURATION)
                                         .withEndAction(() -> {
-                                            binding.buttonSaveEvent.animate()
+                                            binding.priorityLayout.animate()
                                                     .alpha(1f)
                                                     .setDuration(ANIMATION_DURATION)
+                                                    .withEndAction(() -> {
+                                                        binding.buttonSaveEvent.animate()
+                                                                .alpha(1f)
+                                                                .setDuration(ANIMATION_DURATION)
+                                                                .start();
+                                                    })
                                                     .start();
                                         })
                                         .start();
@@ -203,7 +231,7 @@ public class SecondFragment extends Fragment {
         String eventName = binding.editTextEventName.getText().toString().trim();
         String eventDate = binding.buttonSelectDate.getText().toString();
         String eventTime = binding.buttonSelectTime.getText().toString();
-        String priority = spinnerPriority.getSelectedItem().toString();
+        String priority = ((AutoCompleteTextView) binding.spinnerPriority).getText().toString();
 
         // Debug logging
         Log.d("SecondFragment", "=== SAVING EVENT ===");
@@ -246,6 +274,51 @@ public class SecondFragment extends Fragment {
         boolean success = editor.commit();
         Log.d("SecondFragment", "Save Success: " + success);
 
+        // Schedule alarm for notification
+        try {
+            // Parse the date and time
+            Calendar eventDateTime = Calendar.getInstance();
+            SimpleDateFormat dateTimeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+            eventDateTime.setTime(dateTimeFormat.parse(eventDate + " " + eventTime));
+
+            // Calculate trigger time (1 minute from now for testing)
+            long triggerTime = System.currentTimeMillis() + 60_000; // 1 minute from now
+
+            // Create intent for the broadcast receiver
+            Intent intent = new Intent(requireContext(), EventReminderReceiver.class);
+            intent.putExtra("event_name", eventName);
+            intent.putExtra("event_time", eventTime);
+
+            // Create pending intent
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                requireContext(),
+                (int) System.currentTimeMillis(), // Unique request code
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
+            // Get AlarmManager and schedule the alarm
+            AlarmManager alarmManager = (AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
+            if (alarmManager != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    );
+                } else {
+                    alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    );
+                }
+                Log.d("SecondFragment", "Alarm scheduled for: " + new Date(triggerTime));
+            }
+        } catch (Exception e) {
+            Log.e("SecondFragment", "Error scheduling alarm: " + e.getMessage());
+        }
+
         // Verify the save
         String savedEvents = sharedPreferences.getString(KEY_EVENT_LIST, "");
         Log.d("SecondFragment", "Verified Saved Events: [" + savedEvents + "]");
@@ -258,7 +331,8 @@ public class SecondFragment extends Fragment {
             binding.editTextEventName.setText("");
             binding.buttonSelectDate.setText(R.string.select_date_button_text);
             binding.buttonSelectTime.setText(R.string.select_time_button_text);
-            spinnerPriority.setSelection(0); // Reset to first item
+            priorityDropdown.setText(getString(R.string.select_priority_button_text), false);
+
 
             // Navigate back with popUpTo to ensure FirstFragment is recreated
             NavHostFragment.findNavController(SecondFragment.this)

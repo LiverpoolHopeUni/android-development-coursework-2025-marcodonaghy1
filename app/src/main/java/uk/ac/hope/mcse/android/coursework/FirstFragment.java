@@ -13,9 +13,14 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
@@ -63,12 +68,34 @@ public class FirstFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         setupRecyclerView();
         setupClickListeners();
+        setupSortingSpinner();
         animateViewsIn();
         loadEvents();
+
+        // Add click listener for buttonSelectEvent
+        binding.buttonSelectEvent.setOnClickListener(v -> {
+            String eventList = sharedPreferences.getString(KEY_EVENT_LIST, "");
+            if (eventList.isEmpty()) {
+                Toast.makeText(requireContext(), "No events available to select.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Split the event list by the separator
+            String[] events = eventList.split("\\|\\|\\|");
+            
+            // Create and show the dialog
+            new AlertDialog.Builder(requireContext())
+                .setTitle("Select an Event")
+                .setItems(events, (dialog, which) -> {
+                    String selectedEvent = events[which];
+                    Toast.makeText(requireContext(), "Selected: " + selectedEvent, Toast.LENGTH_SHORT).show();
+                })
+                .show();
+        });
     }
 
     private void setupRecyclerView() {
-        eventAdapter = new EventAdapter();
+        eventAdapter = new EventAdapter(new ArrayList<>(), requireContext());
         binding.recyclerViewEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.recyclerViewEvents.setAdapter(eventAdapter);
 
@@ -131,6 +158,99 @@ public class FirstFragment extends Fragment {
                 .navigate(R.id.action_FirstFragment_to_SecondFragment));
     }
 
+    private void setupSortingSpinner() {
+        String[] sortOptions = {"Most Recent First", "Oldest First", "By Priority"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+            requireContext(),
+            R.layout.spinner_item,
+            sortOptions
+        );
+        adapter.setDropDownViewResource(R.layout.spinner_item);
+        
+        binding.spinnerSortEvents.setAdapter(adapter);
+        binding.spinnerSortEvents.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedOption = sortOptions[position];
+                sortEvents(selectedOption);
+                updateTitleText(selectedOption);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Default to most recent first if nothing is selected
+                sortEvents("Most Recent First");
+                updateTitleText("Most Recent First");
+            }
+        });
+    }
+
+    private void sortEvents(String sortOption) {
+        List<Event> events = new ArrayList<>(eventAdapter.getEvents());
+        switch (sortOption) {
+            case "Most Recent First":
+                events.sort((e1, e2) -> {
+                    // Compare dates first
+                    int dateCompare = e2.getDate().compareTo(e1.getDate());
+                    if (dateCompare != 0) return dateCompare;
+                    // If dates are equal, compare times
+                    return e2.getTime().compareTo(e1.getTime());
+                });
+                break;
+            case "Oldest First":
+                events.sort((e1, e2) -> {
+                    // Compare dates first
+                    int dateCompare = e1.getDate().compareTo(e2.getDate());
+                    if (dateCompare != 0) return dateCompare;
+                    // If dates are equal, compare times
+                    return e1.getTime().compareTo(e2.getTime());
+                });
+                break;
+            case "By Priority":
+                events.sort((e1, e2) -> {
+                    int priority1 = getPriorityValue(e1.getPriority());
+                    int priority2 = getPriorityValue(e2.getPriority());
+                    if (priority1 != priority2) {
+                        return Integer.compare(priority2, priority1); // Higher priority first
+                    }
+                    // If priorities are equal, sort by date (most recent first)
+                    return e2.getDate().compareTo(e1.getDate());
+                });
+                break;
+        }
+        eventAdapter = new EventAdapter(events, requireContext());
+        binding.recyclerViewEvents.setAdapter(eventAdapter);
+    }
+
+    private void updateTitleText(String sortOption) {
+        String title = "Schedule";
+        switch (sortOption) {
+            case "Most Recent First":
+                title += " (Most Recent)";
+                break;
+            case "Oldest First":
+                title += " (Oldest First)";
+                break;
+            case "By Priority":
+                title += " (By Priority)";
+                break;
+        }
+        binding.textViewTitle.setText(title);
+    }
+
+    private int getPriorityValue(String priority) {
+        switch (priority.toLowerCase()) {
+            case "high":
+                return 3;
+            case "medium":
+                return 2;
+            case "low":
+                return 1;
+            default:
+                return 0;
+        }
+    }
+
     private void loadEvents() {
         Log.d("FirstFragment", "=== LOADING EVENTS ===");
         executorService.execute(() -> {
@@ -170,7 +290,16 @@ public class FirstFragment extends Fragment {
                 Log.d("FirstFragment", "Final parsed events count: " + events.size());
                 
                 mainHandler.post(() -> {
-                    eventAdapter.setEvents(events);
+                    // Sort events by most recent first by default
+                    events.sort((e1, e2) -> {
+                        int dateCompare = e2.getDate().compareTo(e1.getDate());
+                        if (dateCompare != 0) return dateCompare;
+                        return e2.getTime().compareTo(e1.getTime());
+                    });
+                    
+                    eventAdapter = new EventAdapter(events, requireContext());
+                    binding.recyclerViewEvents.setAdapter(eventAdapter);
+                    updateTitleText("Most Recent First");
                     if (events.isEmpty()) {
                         Toast.makeText(requireContext(), "No events found", Toast.LENGTH_SHORT).show();
                     } else {
@@ -188,10 +317,13 @@ public class FirstFragment extends Fragment {
 
     private void deleteEvent(int position) {
         // Get the event to be deleted
-        Event eventToDelete = eventAdapter.getEventAt(position);
+        List<Event> events = eventAdapter.getEvents();
+        Event eventToDelete = events.get(position);
         
         // Remove from adapter
-        eventAdapter.removeEvent(position);
+        events.remove(position);
+        eventAdapter = new EventAdapter(events, requireContext());
+        binding.recyclerViewEvents.setAdapter(eventAdapter);
         
         // Update SharedPreferences
         String eventList = sharedPreferences.getString(KEY_EVENT_LIST, "");

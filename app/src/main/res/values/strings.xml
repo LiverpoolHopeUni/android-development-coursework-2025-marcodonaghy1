@@ -3,8 +3,8 @@
     <string name="app_name">Event Manager</string>
     <string name="action_settings">Settings</string>
     <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">First Fragment</string>
-    <string name="second_fragment_label">Second Fragment</string>
+    <string name="first_fragment_label">Home 🏠</string>
+    <string name="second_fragment_label">Create Event 🗓️</string>
     <string name="add_event_fragment_label">Add Event</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
@@ -29,7 +29,8 @@
     <string name="submit_response">Submit Response</string>
     <string name="delete_event">Delete Event</string>
     <string name="confirm_delete">Are you sure you want to delete this event?</string>
-    <string name="priority_hint">Select Priority</string>
+    <string name="select_priority_button_text">Select Priority</string>
+
 
     <string-array name="priority_levels">
         <item>High</item>
