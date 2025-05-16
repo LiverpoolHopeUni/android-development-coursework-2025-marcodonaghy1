@@ -1,12 +1,14 @@
 package uk.ac.hope.mcse.android.coursework;
 
+import androidx.annotation.NonNull;
+
 public class Event {
     private String name;
-    private String date;
-    private String time;
+    private final String date;
+    private final String time;
     private String priority;
     private String originalPriority;
-    private boolean isCompleted;
+    private final boolean isCompleted;
 
     public Event(String name, String date, String time, String priority) {
         this.name = name;
@@ -29,16 +31,8 @@ public class Event {
         return date;
     }
 
-    public void setDate(String date) {
-        this.date = date;
-    }
-
     public String getTime() {
         return time;
-    }
-
-    public void setTime(String time) {
-        this.time = time;
     }
 
     public String getPriority() {
@@ -57,18 +51,11 @@ public class Event {
         this.originalPriority = originalPriority;
     }
 
-    public void restoreOriginalPriority() {
-        this.priority = this.originalPriority;
-    }
-
     public boolean isCompleted() {
         return isCompleted;
     }
 
-    public void setCompleted(boolean completed) {
-        isCompleted = completed;
-    }
-
+    @NonNull
     @Override
     public String toString() {
         return name + "\n" + date + "\n" + time + "\n" + priority;

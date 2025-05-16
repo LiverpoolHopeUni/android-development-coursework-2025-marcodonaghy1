@@ -79,6 +79,17 @@
         android:id="@+id/SettingsFragment"
         android:name="uk.ac.hope.mcse.android.coursework.SettingsFragment"
         android:label="Settings"
-        tools:layout="@layout/fragment_settings" />
+        tools:layout="@layout/fragment_settings">
+        
+        <action
+            android:id="@+id/action_SettingsFragment_to_PrivacyPolicyFragment"
+            app:destination="@id/PrivacyPolicyFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/PrivacyPolicyFragment"
+        android:name="uk.ac.hope.mcse.android.coursework.PrivacyPolicyFragment"
+        android:label="Privacy Policy"
+        tools:layout="@layout/dialog_privacy_policy" />
 
 </navigation>

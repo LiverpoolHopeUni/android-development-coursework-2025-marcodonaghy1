@@ -2,6 +2,10 @@ package uk.ac.hope.mcse.android.coursework;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -12,12 +16,12 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.fragment.NavHostFragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.snackbar.Snackbar;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -29,7 +33,7 @@ import java.util.stream.Collectors;
 
 import uk.ac.hope.mcse.android.coursework.databinding.FragmentCompletedEventsBinding;
 
-public class CompletedEventsFragment extends Fragment implements EventAdapter.OnEventUpdatedListener {
+public class CompletedEventsFragment extends Fragment implements EventAdapter.OnEventStatusChangedListener {
     private FragmentCompletedEventsBinding binding;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -43,7 +47,7 @@ public class CompletedEventsFragment extends Fragment implements EventAdapter.On
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         applicationContext = requireContext().getApplicationContext();
-        sharedPreferences = requireContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        sharedPreferences = applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
     @Override
@@ -56,56 +60,51 @@ public class CompletedEventsFragment extends Fragment implements EventAdapter.On
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         setupRecyclerView();
-        loadCompletedEventsFromPrefs();
+        loadEvents();
+        setupSwipeToDelete();
     }
 
     private void setupRecyclerView() {
-        eventAdapter = new EventAdapter(new ArrayList<>(), requireContext(), null);
-        eventAdapter.setOnEventUpdatedListener(this);
+        eventAdapter = new EventAdapter(new ArrayList<>(), requireContext(), this);
         binding.recyclerViewCompletedEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.recyclerViewCompletedEvents.setAdapter(eventAdapter);
     }
 
-    private void loadCompletedEventsFromPrefs() {
-        Log.d("CompletedEventsFragment", "=== LOADING COMPLETED EVENTS ===");
+    private void loadEvents() {
         executorService.execute(() -> {
             try {
-                String json = prefs.getString(KEY_EVENTS_JSON, "[]");
-                Log.d("CompletedEventsFragment", "Raw JSON from SharedPreferences: [" + json + "]");
+                String json = sharedPreferences.getString(KEY_EVENTS, "[]");
+                Log.d("CompletedEventsFragment", "Loading events from JSON: " + json);
                 
                 List<Event> allEvents = new Gson().fromJson(
                     json, new TypeToken<List<Event>>(){}.getType()
                 );
                 
-                // Filter for completed events
-                List<Event> completedEvents = new ArrayList<>();
-                for (Event event : allEvents) {
-                    if (event.isCompleted()) {
-                        completedEvents.add(event);
-                        Log.d("CompletedEventsFragment", "Added completed event: " + event.getName() + 
-                            " on " + event.getDate() + 
-                            " at " + event.getTime() + 
-                            " Priority: " + event.getPriority());
-                    }
-                }
+                // Filter and sort completed events
+                List<Event> completedEvents = allEvents.stream()
+                    .filter(event -> "Completed".equals(event.getPriority()))
+                    .sorted((e1, e2) -> {
+                        int dateCompare = e2.getDate().compareTo(e1.getDate());
+                        return dateCompare != 0 ? dateCompare : e2.getTime().compareTo(e1.getTime());
+                    })
+                    .collect(Collectors.toList());
                 
-                Log.d("CompletedEventsFragment", "Final parsed completed events count: " + completedEvents.size());
+                Log.d("CompletedEventsFragment", "Found " + completedEvents.size() + " completed events");
                 
                 mainHandler.post(() -> {
-                    if (isAdded()) { // Check if fragment is still attached
-                        eventAdapter.updateEvents(completedEvents);
-                        if (completedEvents.isEmpty()) {
-                            Toast.makeText(applicationContext, "No completed events found", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(applicationContext, "Loaded " + completedEvents.size() + " completed events", Toast.LENGTH_SHORT).show();
-                        }
+                    if (isAdded()) {
+                        eventAdapter.setEvents(completedEvents);
+                        String message = completedEvents.isEmpty() ? 
+                            "No completed events" : 
+                            "Loaded " + completedEvents.size() + " completed events";
+                        Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show();
                     }
                 });
             } catch (Exception e) {
-                Log.e("CompletedEventsFragment", "Error loading completed events", e);
+                Log.e("CompletedEventsFragment", "Error loading events", e);
                 mainHandler.post(() -> {
                     if (isAdded()) {
-                        Toast.makeText(applicationContext, "Error loading completed events", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(applicationContext, "Error loading events", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -113,15 +112,16 @@ public class CompletedEventsFragment extends Fragment implements EventAdapter.On
     }
 
     @Override
-    public void onEventUpdated() {
-        // Refresh the list when an event is updated
-        loadCompletedEventsFromPrefs();
+    public void onEventStatusChanged() {
+        Log.d("CompletedEventsFragment", "Event status changed, reloading events");
+        loadEvents();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        loadCompletedEventsFromPrefs();
+        Log.d("CompletedEventsFragment", "Fragment resumed, reloading events");
+        loadEvents();
     }
 
     @Override
@@ -134,5 +134,103 @@ public class CompletedEventsFragment extends Fragment implements EventAdapter.On
     public void onDestroy() {
         super.onDestroy();
         executorService.shutdown();
+    }
+
+    private void setupSwipeToDelete() {
+        ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+            private Drawable deleteIcon;
+            private Paint paint;
+
+            {
+                deleteIcon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_check);
+                paint = new Paint();
+                paint.setColor(ContextCompat.getColor(requireContext(), R.color.green));
+            }
+
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                Event event = eventAdapter.getEvents().get(position);
+                removeEvent(event);
+                Toast.makeText(requireContext(), "Completed event removed", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onChildDraw(@NonNull Canvas c, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
+                View itemView = viewHolder.itemView;
+
+                if (dX < 0) { // Swiping to the left
+                    // Draw green background
+                    paint.setColor(ContextCompat.getColor(requireContext(), R.color.green));
+                    c.drawRect(itemView.getRight() + dX, itemView.getTop(), itemView.getRight(), itemView.getBottom(), paint);
+
+                    // Draw check icon
+                    if (deleteIcon != null) {
+                        int iconMargin = (itemView.getHeight() - deleteIcon.getIntrinsicHeight()) / 2;
+                        int iconTop = itemView.getTop() + iconMargin;
+                        int iconBottom = iconTop + deleteIcon.getIntrinsicHeight();
+                        int iconRight = itemView.getRight() - iconMargin;
+                        int iconLeft = iconRight - deleteIcon.getIntrinsicWidth();
+                        deleteIcon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
+                        deleteIcon.draw(c);
+                    }
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+            }
+        };
+
+        new ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.recyclerViewCompletedEvents);
+    }
+
+    private void removeEvent(Event event) {
+        executorService.execute(() -> {
+            try {
+                // Remove from SharedPreferences
+                String json = sharedPreferences.getString(KEY_EVENTS, "[]");
+                List<Event> allEvents = new Gson().fromJson(json, new TypeToken<List<Event>>(){}.getType());
+                
+                // Find and remove the event
+                allEvents.removeIf(e -> 
+                    e.getName().equals(event.getName()) && 
+                    e.getDate().equals(event.getDate()) && 
+                    e.getTime().equals(event.getTime())
+                );
+                
+                // Save updated list
+                sharedPreferences.edit()
+                    .putString(KEY_EVENTS, new Gson().toJson(allEvents))
+                    .apply();
+
+                // Update UI on main thread
+                mainHandler.post(() -> {
+                    if (isAdded()) {
+                        // Remove from adapter
+                        List<Event> currentEvents = new ArrayList<>(eventAdapter.getEvents());
+                        currentEvents.removeIf(e -> 
+                            e.getName().equals(event.getName()) && 
+                            e.getDate().equals(event.getDate()) && 
+                            e.getTime().equals(event.getTime())
+                        );
+                        eventAdapter.setEvents(currentEvents);
+                        
+                        // Show success message
+                        Toast.makeText(applicationContext, "Completed event removed", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                Log.e("CompletedEventsFragment", "Error removing event", e);
+                mainHandler.post(() -> {
+                    if (isAdded()) {
+                        Toast.makeText(applicationContext, "Error removing event", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
     }
 } 

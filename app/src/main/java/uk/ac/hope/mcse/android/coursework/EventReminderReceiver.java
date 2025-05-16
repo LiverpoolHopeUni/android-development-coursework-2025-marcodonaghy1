@@ -12,7 +12,6 @@ import androidx.core.app.NotificationCompat;
 
 public class EventReminderReceiver extends BroadcastReceiver {
     private static final String CHANNEL_ID = "event_channel";
-    private static final int NOTIFICATION_ID = 1;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -20,6 +19,11 @@ public class EventReminderReceiver extends BroadcastReceiver {
 
         String eventName = intent.getStringExtra("event_name");
         String eventTime = intent.getStringExtra("event_time");
+        
+        if (eventName == null || eventTime == null) {
+            Log.e("EventReminder", "Missing event data in intent");
+            return;
+        }
 
         // Create an intent for the notification
         Intent notificationIntent = new Intent(context, MainActivity.class);
@@ -30,9 +34,12 @@ public class EventReminderReceiver extends BroadcastReceiver {
             PendingIntent.FLAG_IMMUTABLE
         );
 
+        // Generate unique notification ID based on event name and time
+        int notificationId = (eventName + eventTime).hashCode();
+
         // Build the notification
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Upcoming Event")
             .setContentText("Your event " + eventName + " starts soon!")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -43,6 +50,6 @@ public class EventReminderReceiver extends BroadcastReceiver {
         // Show the notification
         NotificationManager notificationManager = 
             (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(NOTIFICATION_ID, builder.build());
+        notificationManager.notify(notificationId, builder.build());
     }
 } 

@@ -17,15 +17,20 @@ public class MainActivity extends AppCompatActivity {
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
     private NavController navController;
+    private SharedPreferences prefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Load dark mode preference before setting content view
-        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
-        boolean isDark = prefs.getBoolean("dark_mode", false);
-        AppCompatDelegate.setDefaultNightMode(isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-
         super.onCreate(savedInstanceState);
+        
+        // Initialize SharedPreferences
+        prefs = getSharedPreferences("settings", MODE_PRIVATE);
+        
+        // Load and apply saved theme
+        boolean isDarkMode = prefs.getBoolean("dark_mode", false);
+        AppCompatDelegate.setDefaultNightMode(
+            isDarkMode ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO
+        );
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -42,12 +47,24 @@ public class MainActivity extends AppCompatActivity {
                 binding.toolbar.setTitle("Home 🏠");
             } else if (destination.getId() == R.id.SecondFragment) {
                 binding.toolbar.setTitle("Create Event \uD83D\uDDD3\uFE0F");
-            } else if (destination.getId() == R.id.RespondFragment) {
-                binding.toolbar.setTitle("Friend Response");
             } else if (destination.getId() == R.id.SettingsFragment) {
                 binding.toolbar.setTitle("Settings ⚙️");
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Check if theme needs to be updated
+        boolean isDarkMode = prefs.getBoolean("dark_mode", false);
+        int currentMode = AppCompatDelegate.getDefaultNightMode();
+        int newMode = isDarkMode ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
+        
+        if (currentMode != newMode) {
+            AppCompatDelegate.setDefaultNightMode(newMode);
+            recreate();
+        }
     }
 
     @Override

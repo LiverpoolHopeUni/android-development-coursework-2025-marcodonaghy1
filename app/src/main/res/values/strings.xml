@@ -38,6 +38,18 @@
         <item>Low</item>
     </string-array>
 
+    <string-array name="sort_options">
+        <item>Most Recent First</item>
+        <item>Oldest First</item>
+        <item>By Priority</item>
+    </string-array>
+
     <string name="view_completed_events">View Completed Events</string>
     <string name="add_event">Add Event</string>
+    <string name="privacy_policy">Privacy Policy\n\nLast Updated: March 2024\n\n1. Information We Collect\n\nWe collect information that you provide directly to us, including:\n• Event details you create\n• Notification preferences\n• App usage data\n\n2. How We Use Your Information\n\nWe use the information we collect to:\n• Provide and maintain our services\n• Send you notifications about your events\n• Improve our app\'s functionality\n\n3. Data Storage\n\nYour data is stored locally on your device. We do not transmit or store your information on external servers.\n\n4. Your Rights\n\nYou have the right to:\n• Access your personal data\n• Delete your data\n• Modify your notification preferences\n\n5. Changes to This Policy\n\nWe may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page.\n\n6. Contact Us\n\nIf you have any questions about this Privacy Policy, please contact us at support@example.com.</string>
+    <string name="enable_notifications">Enable Notifications</string>
+    <string name="privacy_policy_button">Privacy Policy</string>
+    <string name="clear_all_events_button">Clear All Events</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="version_number">v1.0.0</string>
 </resources>

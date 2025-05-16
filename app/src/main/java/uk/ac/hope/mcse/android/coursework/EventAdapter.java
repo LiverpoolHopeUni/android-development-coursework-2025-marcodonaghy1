@@ -2,6 +2,7 @@ package uk.ac.hope.mcse.android.coursework;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,7 +26,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     private final Context context;
     private final SharedPreferences sharedPreferences;
     private OnEventUpdatedListener listener;
-    private OnEventStatusChangedListener statusListener;
+    private final OnEventStatusChangedListener statusListener;
 
     public interface OnEventUpdatedListener {
         void onEventUpdated();
@@ -66,14 +67,16 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     }
 
     public void setEvents(List<Event> events) {
-        this.events = events;
+        Log.d("EventAdapter", "Setting events: " + events.size() + " events");
+        this.events = new ArrayList<>(events);
         notifyDataSetChanged();
     }
 
     public void updateEvents(List<Event> events) {
-        this.events = new ArrayList<>(events); // Create a new list to avoid reference issues
+        Log.d("EventAdapter", "Updating events: " + events.size() + " events");
+        this.events = new ArrayList<>(events);
         notifyDataSetChanged();
-        saveEvents(); // Save the updated events to SharedPreferences
+        saveEvents();
     }
 
     public List<Event> getEvents() {
@@ -106,9 +109,10 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     private void saveEvents() {
         try {
             String json = new Gson().toJson(events);
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.putString(KEY_EVENTS, json);
-            editor.apply();
+            Log.d("EventAdapter", "Saving events to SharedPreferences: " + json);
+            sharedPreferences.edit()
+                .putString(KEY_EVENTS, json)
+                .apply();
 
             if (listener != null) {
                 listener.onEventUpdated();
@@ -117,6 +121,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
                 statusListener.onEventStatusChanged();
             }
         } catch (Exception e) {
+            Log.e("EventAdapter", "Error saving events", e);
             e.printStackTrace();
         }
     }
@@ -138,6 +143,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
         }
 
         public void bind(Event event) {
+            Log.d("EventAdapter", "Binding event: " + event.getName() + " with priority: " + event.getPriority());
             textEventName.setText(event.getName());
             textEventDate.setText(event.getDate());
             textEventTime.setText(event.getTime());
@@ -150,36 +156,63 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
                     Event currentEvent = events.get(position);
-                    String newPriority;
+                    String newPriority = "Completed".equals(currentEvent.getPriority()) ? 
+                        (currentEvent.getOriginalPriority() != null ? currentEvent.getOriginalPriority() : "Medium") : 
+                        "Completed";
                     
+                    Log.d("EventAdapter", "Toggling event status: " + currentEvent.getName() + 
+                        " from " + currentEvent.getPriority() + " to " + newPriority);
+                    
+                    // Store original priority if marking as completed
                     if (!"Completed".equals(currentEvent.getPriority())) {
-                        // Store original priority in a tag
                         currentEvent.setOriginalPriority(currentEvent.getPriority());
-                        newPriority = "Completed";
-                    } else {
-                        // Restore original priority or default to Medium
-                        newPriority = currentEvent.getOriginalPriority() != null ? 
-                            currentEvent.getOriginalPriority() : "Medium";
                     }
                     
                     // Update event priority
                     currentEvent.setPriority(newPriority);
-                    updateTickButtonAppearance(currentEvent);
                     
-                    // Save changes
-                    saveEvents();
+                    // Get all events from SharedPreferences
+                    String json = sharedPreferences.getString(KEY_EVENTS, "[]");
+                    List<Event> allEvents = new Gson().fromJson(json, new TypeToken<List<Event>>(){}.getType());
+                    
+                    // Update the event in the complete list
+                    for (int i = 0; i < allEvents.size(); i++) {
+                        Event e = allEvents.get(i);
+                        if (e.getName().equals(currentEvent.getName()) && 
+                            e.getDate().equals(currentEvent.getDate()) && 
+                            e.getTime().equals(currentEvent.getTime())) {
+                            allEvents.set(i, currentEvent);
+                            break;
+                        }
+                    }
+                    
+                    // Save the updated complete list
+                    String updatedJson = new Gson().toJson(allEvents);
+                    Log.d("EventAdapter", "Saving updated events to SharedPreferences: " + updatedJson);
+                    sharedPreferences.edit()
+                        .putString(KEY_EVENTS, updatedJson)
+                        .apply();
+                    
+                    // Remove from current list and notify adapter
+                    events.remove(position);
+                    notifyItemRemoved(position);
+                    
+                    // Notify listeners
+                    if (listener != null) {
+                        listener.onEventUpdated();
+                    }
+                    if (statusListener != null) {
+                        statusListener.onEventStatusChanged();
+                    }
                 }
             });
         }
 
         private void updateTickButtonAppearance(Event event) {
-            if ("Completed".equals(event.getPriority())) {
-                buttonTickEvent.setIconResource(R.drawable.ic_done);
-                buttonTickEvent.setBackgroundTintList(context.getColorStateList(R.color.completed_event));
-            } else {
-                buttonTickEvent.setIconResource(R.drawable.ic_check);
-                buttonTickEvent.setBackgroundTintList(context.getColorStateList(R.color.primary));
-            }
+            boolean isCompleted = "Completed".equals(event.getPriority());
+            buttonTickEvent.setIconResource(isCompleted ? R.drawable.ic_done : R.drawable.ic_check);
+            buttonTickEvent.setBackgroundTintList(context.getColorStateList(
+                isCompleted ? R.color.completed_event : R.color.primary));
         }
     }
 } 

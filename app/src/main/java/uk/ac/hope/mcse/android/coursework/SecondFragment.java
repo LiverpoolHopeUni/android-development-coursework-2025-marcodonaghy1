@@ -45,7 +45,8 @@ public class SecondFragment extends Fragment {
 
     private static final String PREF_NAME = "EventDetails";
     private static final String KEY_EVENTS = "all_events_json";
-    private static final int ANIMATION_DURATION = 300;
+    private static final int ANIMATION_DURATION = 400;
+    private static final int ANIMATION_DELAY = 100;
     private static final int BUTTON_ANIMATION_DURATION = 100;
     
     private FragmentSecondBinding binding;
@@ -58,10 +59,6 @@ public class SecondFragment extends Fragment {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private SharedPreferences sharedPreferences;
-    private MaterialButton buttonSelectDate;
-    private MaterialButton buttonSelectTime;
-    private TextInputEditText editTextEventName;
-    private AutoCompleteTextView priorityDropdown;
     private Context applicationContext;
 
     @Override
@@ -87,10 +84,8 @@ public class SecondFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(
-            @NonNull LayoutInflater inflater, ViewGroup container,
-            Bundle savedInstanceState
-    ) {
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
+                           Bundle savedInstanceState) {
         binding = FragmentSecondBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
@@ -98,91 +93,131 @@ public class SecondFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        setupClickListeners();
-        animateViewsIn();
+        
+        if (binding == null) {
+            Log.e("SecondFragment", "Binding is null in onViewCreated");
+            return;
+        }
 
-        // Initialize views
-        editTextEventName = view.findViewById(R.id.editTextEventName);
-        buttonSelectDate = view.findViewById(R.id.buttonSelectDate);
-        buttonSelectTime = view.findViewById(R.id.buttonSelectTime);
-        priorityDropdown = view.findViewById(R.id.spinnerPriority);
+        try {
+            // Set up priority dropdown
+            String[] priorities = getResources().getStringArray(R.array.priority_levels);
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                requireContext(),
+                R.layout.dropdown_item,
+                priorities
+            );
+            binding.spinnerPriority.setAdapter(adapter);
+            binding.spinnerPriority.setText(priorities[0], false); // Set default value
 
-        // Set up priority dropdown
-        String[] priorities = getResources().getStringArray(R.array.priority_levels);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-            requireContext(),
-            R.layout.dropdown_item,
-            priorities
-        );
-        priorityDropdown.setAdapter(adapter);
-        priorityDropdown.setText(priorities[0], false); // Set default value
+            // Set initial date and time
+            binding.buttonSelectDate.setText(currentDate);
+            binding.buttonSelectTime.setText(currentTime);
 
-        // Set initial date and time
-        buttonSelectDate.setText(currentDate);
-        buttonSelectTime.setText(currentTime);
-
-        // Date picker
-        binding.buttonSelectDate.setOnClickListener(v -> {
-            animateButtonClick(v, this::showDatePicker);
-        });
-
-        // Time picker
-        binding.buttonSelectTime.setOnClickListener(v -> {
-            animateButtonClick(v, this::showTimePicker);
-        });
+            setupClickListeners();
+            
+            // Post the animation to ensure views are laid out
+            view.post(this::animateViewsIn);
+        } catch (Exception e) {
+            Log.e("SecondFragment", "Error in onViewCreated", e);
+        }
     }
 
     private void animateViewsIn() {
-        // Set initial states
-        binding.eventNameLayout.setAlpha(0f);
-        binding.buttonSelectDate.setAlpha(0f);
-        binding.buttonSelectTime.setAlpha(0f);
-        binding.priorityLayout.setAlpha(0f);
-        binding.buttonSaveEvent.setAlpha(0f);
+        if (binding == null || !isAdded() || getView() == null) {
+            Log.w("SecondFragment", "Cannot animate views: binding is null or fragment not attached");
+            return;
+        }
 
-        // Create a single animation set
-        binding.eventNameLayout.animate()
-                .alpha(1f)
-                .setDuration(ANIMATION_DURATION)
-                .withEndAction(() -> {
-                    binding.buttonSelectDate.animate()
-                            .alpha(1f)
-                            .setDuration(ANIMATION_DURATION)
-                            .withEndAction(() -> {
-                                binding.buttonSelectTime.animate()
-                                        .alpha(1f)
-                                        .setDuration(ANIMATION_DURATION)
-                                        .withEndAction(() -> {
-                                            binding.priorityLayout.animate()
-                                                    .alpha(1f)
-                                                    .setDuration(ANIMATION_DURATION)
-                                                    .withEndAction(() -> {
-                                                        binding.buttonSaveEvent.animate()
-                                                                .alpha(1f)
-                                                                .setDuration(ANIMATION_DURATION)
-                                                                .start();
-                                                    })
-                                                    .start();
-                                        })
-                                        .start();
-                            })
-                            .start();
-                })
-                .start();
+        try {
+            // Set initial states
+            binding.eventNameLayout.setAlpha(0f);
+            binding.eventNameLayout.setTranslationY(50f);
+            
+            binding.buttonSelectDate.setAlpha(0f);
+            binding.buttonSelectDate.setTranslationY(50f);
+            
+            binding.buttonSelectTime.setAlpha(0f);
+            binding.buttonSelectTime.setTranslationY(50f);
+            
+            binding.priorityLayout.setAlpha(0f);
+            binding.priorityLayout.setTranslationY(50f);
+            
+            binding.buttonSaveEvent.setAlpha(0f);
+            binding.buttonSaveEvent.setTranslationY(50f);
+
+            // Animate event name
+            binding.eventNameLayout.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(ANIMATION_DURATION)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+
+            // Animate date button
+            binding.buttonSelectDate.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(ANIMATION_DURATION)
+                    .setStartDelay(ANIMATION_DELAY)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+
+            // Animate time button
+            binding.buttonSelectTime.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(ANIMATION_DURATION)
+                    .setStartDelay(ANIMATION_DELAY * 2)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+
+            // Animate priority layout
+            binding.priorityLayout.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(ANIMATION_DURATION)
+                    .setStartDelay(ANIMATION_DELAY * 3)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+
+            // Animate save button
+            binding.buttonSaveEvent.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(ANIMATION_DURATION)
+                    .setStartDelay(ANIMATION_DELAY * 4)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+        } catch (Exception e) {
+            Log.e("SecondFragment", "Error during animation", e);
+        }
     }
 
     private void setupClickListeners() {
-        binding.buttonSelectDate.setOnClickListener(v -> {
-            animateButtonClick(v, this::showDatePicker);
-        });
+        if (binding == null) return;
         
-        binding.buttonSelectTime.setOnClickListener(v -> {
-            animateButtonClick(v, this::showTimePicker);
-        });
-        
-        binding.buttonSaveEvent.setOnClickListener(v -> {
-            animateButtonClick(v, this::saveEventDetails);
-        });
+        try {
+            binding.buttonSelectDate.setOnClickListener(v -> {
+                if (binding != null && isAdded()) {
+                    animateButtonClick(v, this::showDatePicker);
+                }
+            });
+            
+            binding.buttonSelectTime.setOnClickListener(v -> {
+                if (binding != null && isAdded()) {
+                    animateButtonClick(v, this::showTimePicker);
+                }
+            });
+            
+            binding.buttonSaveEvent.setOnClickListener(v -> {
+                if (binding != null && isAdded()) {
+                    animateButtonClick(v, this::saveEventDetails);
+                }
+            });
+        } catch (Exception e) {
+            Log.e("SecondFragment", "Error setting up click listeners", e);
+        }
     }
 
     private void animateButtonClick(View v, Runnable action) {
@@ -209,7 +244,6 @@ public class SecondFragment extends Fragment {
 
         DatePickerDialog datePickerDialog = new DatePickerDialog(
             requireContext(),
-            android.R.style.Theme_Holo_Light_Dialog,
             (view, selectedYear, selectedMonth, selectedDay) -> {
                 String formattedDate = String.format("%02d/%02d/%04d", selectedDay, selectedMonth + 1, selectedYear);
                 binding.buttonSelectDate.setText(formattedDate);
@@ -227,7 +261,6 @@ public class SecondFragment extends Fragment {
 
         TimePickerDialog timePickerDialog = new TimePickerDialog(
             requireContext(),
-            android.R.style.Theme_Holo_Light_Dialog,
             (view, selectedHour, selectedMinute) -> {
                 String formattedTime = String.format("%02d:%02d", selectedHour, selectedMinute);
                 binding.buttonSelectTime.setText(formattedTime);
@@ -239,11 +272,13 @@ public class SecondFragment extends Fragment {
     }
 
     private void saveEventDetails() {
+        if (binding == null) return;
+        
         // Get input values
         String eventName = binding.editTextEventName.getText().toString().trim();
         String eventDate = binding.buttonSelectDate.getText().toString();
         String eventTime = binding.buttonSelectTime.getText().toString();
-        String priority = ((AutoCompleteTextView) binding.spinnerPriority).getText().toString();
+        String priority = binding.spinnerPriority.getText().toString();
 
         // Debug logging
         Log.d("SecondFragment", "=== SAVING EVENT ===");
@@ -316,6 +351,14 @@ public class SecondFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        // Clear all animations
+        if (binding != null) {
+            binding.eventNameLayout.clearAnimation();
+            binding.buttonSelectDate.clearAnimation();
+            binding.buttonSelectTime.clearAnimation();
+            binding.priorityLayout.clearAnimation();
+            binding.buttonSaveEvent.clearAnimation();
+        }
         binding = null;
     }
 

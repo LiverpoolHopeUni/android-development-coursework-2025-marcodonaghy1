@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace = "uk.ac.hope.mcse.android.coursework"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "uk.ac.hope.mcse.android.coursework"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -31,6 +31,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        dataBinding = true
     }
 }
 
