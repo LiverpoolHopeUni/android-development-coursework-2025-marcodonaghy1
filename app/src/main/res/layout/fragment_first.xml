@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="?android:attr/colorBackground"
     tools:context=".FirstFragment">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -14,12 +14,12 @@
 
         <TextView
             android:id="@+id/textViewTitle"
-            android:text = "Schedule"
+            android:text="Schedule"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:textAlignment="center"
-            android:textColor="@color/black"
+            android:textColor="?android:attr/textColorPrimary"
             android:textSize="24sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
@@ -33,6 +33,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:hint="Search events"
+            android:textColorHint="?android:attr/textColorSecondary"
+            android:textColor="?android:attr/textColorPrimary"
             app:layout_constraintTop_toBottomOf="@id/textViewTitle"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
@@ -66,7 +68,7 @@
             android:id="@+id/recyclerViewEvents"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:background="@color/white"
+            android:background="?android:attr/colorBackground"
             android:clipToPadding="false"
             android:paddingBottom="80dp"
             android:visibility="visible"
@@ -76,26 +78,25 @@
             app:layout_constraintTop_toBottomOf="@id/spinnerSortEvents" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabCompleted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/view_completed_events"
+            app:srcCompat="@drawable/ic_done"
+            android:layout_margin="16dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:contentDescription="@string/fab_add_event"
+            android:contentDescription="@string/add_event"
+            app:srcCompat="@drawable/ic_add"
+            android:layout_margin="16dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:srcCompat="@drawable/ic_add" />
+            app:layout_constraintEnd_toEndOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabCompleted"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:contentDescription="View Completed Events"
-        app:srcCompat="@drawable/ic_done"
-        app:layout_anchor="@id/recyclerViewEvents"
-        app:layout_anchorGravity="bottom|start" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

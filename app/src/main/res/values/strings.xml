@@ -37,4 +37,7 @@
         <item>Medium</item>
         <item>Low</item>
     </string-array>
+
+    <string name="view_completed_events">View Completed Events</string>
+    <string name="add_event">Add Event</string>
 </resources>

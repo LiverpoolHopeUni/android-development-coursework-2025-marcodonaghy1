@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
+    android:background="?android:attr/colorBackground"
     tools:context=".SecondFragment">
 
     <com.google.android.material.textfield.TextInputLayout
@@ -22,7 +23,8 @@
             android:id="@+id/editTextEventName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="text" />
+            android:inputType="text"
+            android:textColor="?android:attr/textColorPrimary" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -33,10 +35,10 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="@string/select_date_button_text"
-        android:textColor="@color/black"
+        android:textColor="?android:attr/textColorPrimary"
         app:icon="@drawable/ic_calendar"
         app:iconGravity="textStart"
-        app:iconTint="@color/black"
+        app:iconTint="?android:attr/textColorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/eventNameLayout" />
@@ -48,10 +50,10 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="@string/select_time_button_text"
-        android:textColor="@color/black"
+        android:textColor="?android:attr/textColorPrimary"
         app:icon="@drawable/ic_clock"
         app:iconGravity="textStart"
-        app:iconTint="@color/black"
+        app:iconTint="?android:attr/textColorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/buttonSelectDate" />
@@ -71,7 +73,8 @@
             android:id="@+id/spinnerPriority"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="none" />
+            android:inputType="none"
+            android:textColor="?android:attr/textColorPrimary" />
 
     </com.google.android.material.textfield.TextInputLayout>
 

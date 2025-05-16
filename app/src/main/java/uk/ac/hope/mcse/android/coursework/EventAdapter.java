@@ -11,27 +11,35 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHolder> {
-    private static final String PREF_NAME = "EventPrefs";
-    private static final String KEY_EVENT_LIST = "event_list";
-    private static final String EVENT_SEPARATOR = "|||";
+    private static final String PREF_NAME = "EventDetails";
+    private static final String KEY_EVENTS = "all_events_json";
     
     private List<Event> events;
     private final Context context;
     private final SharedPreferences sharedPreferences;
     private OnEventUpdatedListener listener;
+    private OnEventStatusChangedListener statusListener;
 
     public interface OnEventUpdatedListener {
         void onEventUpdated();
     }
 
-    public EventAdapter(List<Event> events, Context context) {
+    public interface OnEventStatusChangedListener {
+        void onEventStatusChanged();
+    }
+
+    public EventAdapter(List<Event> events, Context context, OnEventStatusChangedListener statusListener) {
         this.events = events;
         this.context = context;
         this.sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        this.statusListener = statusListener;
     }
 
     public void setOnEventUpdatedListener(OnEventUpdatedListener listener) {
@@ -62,6 +70,12 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
         notifyDataSetChanged();
     }
 
+    public void updateEvents(List<Event> events) {
+        this.events = new ArrayList<>(events); // Create a new list to avoid reference issues
+        notifyDataSetChanged();
+        saveEvents(); // Save the updated events to SharedPreferences
+    }
+
     public List<Event> getEvents() {
         return events;
     }
@@ -90,23 +104,20 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     }
 
     private void saveEvents() {
-        StringBuilder eventList = new StringBuilder();
-        for (Event event : events) {
-            if (eventList.length() > 0) {
-                eventList.append(EVENT_SEPARATOR);
-            }
-            eventList.append(event.getName()).append("\n")
-                    .append(event.getDate()).append("\n")
-                    .append(event.getTime()).append("\n")
-                    .append(event.getPriority());
-        }
-        
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEY_EVENT_LIST, eventList.toString());
-        editor.apply();
+        try {
+            String json = new Gson().toJson(events);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString(KEY_EVENTS, json);
+            editor.apply();
 
-        if (listener != null) {
-            listener.onEventUpdated();
+            if (listener != null) {
+                listener.onEventUpdated();
+            }
+            if (statusListener != null) {
+                statusListener.onEventStatusChanged();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

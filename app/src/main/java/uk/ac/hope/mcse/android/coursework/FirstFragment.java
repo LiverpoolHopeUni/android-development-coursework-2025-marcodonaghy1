@@ -41,14 +41,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import uk.ac.hope.mcse.android.coursework.databinding.FragmentFirstBinding;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 /**
  *
  */
-public class FirstFragment extends Fragment {
+public class FirstFragment extends Fragment implements EventAdapter.OnEventStatusChangedListener {
 
-    private static final String PREF_NAME = "EventPrefs";
-    private static final String KEY_EVENT_LIST = "event_list";
+    private static final String PREF_NAME = "EventDetails";
+    private static final String KEY_EVENTS = "all_events_json";
     private static final String EVENT_SEPARATOR = "|||"; // Unique separator for events
     
     private FragmentFirstBinding binding;
@@ -57,11 +59,13 @@ public class FirstFragment extends Fragment {
     private SharedPreferences sharedPreferences;
     private EventAdapter eventAdapter;
     private List<Event> originalEvents = new ArrayList<>(); // Store original events for filtering
+    private Context applicationContext;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        sharedPreferences = requireActivity().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        applicationContext = requireContext().getApplicationContext();
+        sharedPreferences = applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
     @Override
@@ -82,7 +86,7 @@ public class FirstFragment extends Fragment {
 
         // Add click listener for buttonSelectEvent
         binding.buttonSelectEvent.setOnClickListener(v -> {
-            String eventList = sharedPreferences.getString(KEY_EVENT_LIST, "");
+            String eventList = sharedPreferences.getString(KEY_EVENTS, "");
             if (eventList.isEmpty()) {
                 Toast.makeText(requireContext(), "No events available to select.", Toast.LENGTH_SHORT).show();
                 return;
@@ -113,7 +117,7 @@ public class FirstFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        eventAdapter = new EventAdapter(new ArrayList<>(), requireContext());
+        eventAdapter = new EventAdapter(new ArrayList<>(), requireContext(), this);
         binding.recyclerViewEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.recyclerViewEvents.setAdapter(eventAdapter);
 
@@ -132,26 +136,7 @@ public class FirstFragment extends Fragment {
                 if (event != null) {
                     if (direction == ItemTouchHelper.LEFT) {
                         // Delete event
-                        eventAdapter.removeEvent(position);
-                        // Update SharedPreferences
-                        String eventList = sharedPreferences.getString(KEY_EVENT_LIST, "");
-                        String[] eventStrings = eventList.split("\\|\\|\\|");
-                        StringBuilder updatedEvents = new StringBuilder();
-                        
-                        for (int i = 0; i < eventStrings.length; i++) {
-                            if (i != position) {
-                                if (updatedEvents.length() > 0) {
-                                    updatedEvents.append(EVENT_SEPARATOR);
-                                }
-                                updatedEvents.append(eventStrings[i]);
-                            }
-                        }
-                        
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.putString(KEY_EVENT_LIST, updatedEvents.toString());
-                        editor.apply();
-                        
-                        Toast.makeText(requireContext(), "Event deleted", Toast.LENGTH_SHORT).show();
+                        deleteEvent(position);
                     } else if (direction == ItemTouchHelper.RIGHT) {
                         // Edit event
                         showEditEventDialog(event, position);
@@ -368,14 +353,13 @@ public class FirstFragment extends Fragment {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String selectedOption = sortOptions[position];
                 sortEvents(selectedOption);
-                updateTitleText(selectedOption);
+
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
                 // Default to most recent first if nothing is selected
                 sortEvents("Most Recent First");
-                updateTitleText("Most Recent First");
             }
         });
     }
@@ -413,25 +397,11 @@ public class FirstFragment extends Fragment {
                 });
                 break;
         }
-        eventAdapter = new EventAdapter(events, requireContext());
+        eventAdapter = new EventAdapter(events, requireContext(), this);
         binding.recyclerViewEvents.setAdapter(eventAdapter);
     }
 
-    private void updateTitleText(String sortOption) {
-        String title = "Schedule";
-        switch (sortOption) {
-            case "Most Recent First":
-                title += " (Most Recent)";
-                break;
-            case "Oldest First":
-                title += " (Oldest First)";
-                break;
-            case "By Priority":
-                title += " (By Priority)";
-                break;
-        }
-        binding.textViewTitle.setText(title);
-    }
+
 
     private int getPriorityValue(String priority) {
         switch (priority.toLowerCase()) {
@@ -484,38 +454,23 @@ public class FirstFragment extends Fragment {
         Log.d("FirstFragment", "=== LOADING EVENTS ===");
         executorService.execute(() -> {
             try {
-                String eventList = sharedPreferences.getString(KEY_EVENT_LIST, "");
-                Log.d("FirstFragment", "Raw event list from SharedPreferences: [" + eventList + "]");
+                String json = sharedPreferences.getString(KEY_EVENTS, "[]");
+                Log.d("FirstFragment", "Raw JSON from SharedPreferences: [" + json + "]");
                 
+                List<Event> allEvents = new Gson().fromJson(
+                    json, new TypeToken<List<Event>>(){}.getType()
+                );
+                
+                // Filter for non-completed events
                 List<Event> events = new ArrayList<>();
-                
-                if (!eventList.isEmpty()) {
-                    String[] eventStrings = eventList.split("\\|\\|\\|");
-                    Log.d("FirstFragment", "Split into " + eventStrings.length + " events");
-                    
-                    for (int i = 0; i < eventStrings.length; i++) {
-                        String eventString = eventStrings[i].trim();
-                        Log.d("FirstFragment", "Processing event " + (i + 1) + ": [" + eventString + "]");
-                        
-                        if (!eventString.isEmpty()) {
-                            String[] parts = eventString.split("\n");
-                            Log.d("FirstFragment", "Event " + (i + 1) + " parts: " + Arrays.toString(parts));
-                            
-                            if (parts.length >= 3) {
-                                String priority = parts.length >= 4 ? parts[3] : "Medium";
-                                // Only add non-completed events
-                                if (!"Completed".equals(priority)) {
-                                    Event event = new Event(parts[0], parts[1], parts[2], priority);
-                                    events.add(event);
-                                    Log.d("FirstFragment", "Added event: " + event.getName() + " on " + event.getDate() + " at " + event.getTime() + " Priority: " + event.getPriority());
-                                }
-                            } else {
-                                Log.e("FirstFragment", "Invalid event format for event " + (i + 1) + ": [" + eventString + "]");
-                            }
-                        }
+                for (Event event : allEvents) {
+                    if (!event.isCompleted()) {
+                        events.add(event);
+                        Log.d("FirstFragment", "Added event: " + event.getName() + 
+                            " on " + event.getDate() + 
+                            " at " + event.getTime() + 
+                            " Priority: " + event.getPriority());
                     }
-                } else {
-                    Log.d("FirstFragment", "No events found in SharedPreferences");
                 }
                 
                 Log.d("FirstFragment", "Final parsed events count: " + events.size());
@@ -529,19 +484,18 @@ public class FirstFragment extends Fragment {
                     });
                     
                     originalEvents = new ArrayList<>(events);
-                    eventAdapter = new EventAdapter(events, requireContext());
+                    eventAdapter = new EventAdapter(events, requireContext(), this);
                     binding.recyclerViewEvents.setAdapter(eventAdapter);
-                    updateTitleText("Most Recent First");
                     if (events.isEmpty()) {
-                        Toast.makeText(requireContext(), "No events found", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(applicationContext, "No events found", Toast.LENGTH_SHORT).show();
                     } else {
-                        Toast.makeText(requireContext(), "Loaded " + events.size() + " events", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(applicationContext, "Loaded " + events.size() + " events", Toast.LENGTH_SHORT).show();
                     }
                 });
             } catch (Exception e) {
                 Log.e("FirstFragment", "Error loading events", e);
                 mainHandler.post(() -> 
-                    Toast.makeText(requireContext(), "Error loading events", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Error loading events", Toast.LENGTH_SHORT).show()
                 );
             }
         });
@@ -554,30 +508,22 @@ public class FirstFragment extends Fragment {
         
         // Remove from adapter
         events.remove(position);
-        eventAdapter = new EventAdapter(events, requireContext());
+        eventAdapter = new EventAdapter(events, requireContext(), this);
         binding.recyclerViewEvents.setAdapter(eventAdapter);
         
-        // Update SharedPreferences
-        String eventList = sharedPreferences.getString(KEY_EVENT_LIST, "");
-        String[] eventStrings = eventList.split("\\|\\|\\|");
-        StringBuilder updatedEvents = new StringBuilder();
-        
-        for (int i = 0; i < eventStrings.length; i++) {
-            if (i != position) {
-                if (updatedEvents.length() > 0) {
-                    updatedEvents.append(EVENT_SEPARATOR);
-                }
-                updatedEvents.append(eventStrings[i]);
-            }
+        // Update SharedPreferences using JSON
+        try {
+            String json = new Gson().toJson(events);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString(KEY_EVENTS, json);
+            editor.apply();
+            
+            // Show confirmation
+            Toast.makeText(requireContext(), "Event deleted", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e("FirstFragment", "Error deleting event", e);
+            Toast.makeText(requireContext(), "Error deleting event", Toast.LENGTH_SHORT).show();
         }
-        
-        // Save updated events
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEY_EVENT_LIST, updatedEvents.toString());
-        editor.apply();
-        
-        // Show confirmation
-        Toast.makeText(requireContext(), "Event deleted", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -596,6 +542,11 @@ public class FirstFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         executorService.shutdown();
+    }
+
+    @Override
+    public void onEventStatusChanged() {
+        loadEvents();
     }
 
 }

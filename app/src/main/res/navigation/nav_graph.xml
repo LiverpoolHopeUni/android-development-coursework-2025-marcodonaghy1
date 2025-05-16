@@ -75,4 +75,10 @@
         android:label="Completed Events"
         tools:layout="@layout/fragment_completed_events" />
 
+    <fragment
+        android:id="@+id/SettingsFragment"
+        android:name="uk.ac.hope.mcse.android.coursework.SettingsFragment"
+        android:label="Settings"
+        tools:layout="@layout/fragment_settings" />
+
 </navigation>

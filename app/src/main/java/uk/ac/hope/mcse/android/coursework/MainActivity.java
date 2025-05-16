@@ -1,16 +1,14 @@
 package uk.ac.hope.mcse.android.coursework;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
-
 import androidx.appcompat.app.AppCompatActivity;
-
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
-
 import uk.ac.hope.mcse.android.coursework.databinding.ActivityMainBinding;
-
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -22,6 +20,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Load dark mode preference before setting content view
+        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+        boolean isDark = prefs.getBoolean("dark_mode", false);
+        AppCompatDelegate.setDefaultNightMode(isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
+
         super.onCreate(savedInstanceState);
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
@@ -41,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
                 binding.toolbar.setTitle("Create Event \uD83D\uDDD3\uFE0F");
             } else if (destination.getId() == R.id.RespondFragment) {
                 binding.toolbar.setTitle("Friend Response");
+            } else if (destination.getId() == R.id.SettingsFragment) {
+                binding.toolbar.setTitle("Settings ⚙️");
             }
         });
     }
@@ -61,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            navController.navigate(R.id.SettingsFragment);
             return true;
         }
 

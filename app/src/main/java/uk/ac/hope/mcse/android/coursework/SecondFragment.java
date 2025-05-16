@@ -36,12 +36,15 @@ import java.util.concurrent.Executors;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SecondFragment extends Fragment {
 
-    private static final String PREF_NAME = "EventPrefs";
-    private static final String KEY_EVENT_LIST = "event_list";
-    private static final String EVENT_SEPARATOR = "|||";
+    private static final String PREF_NAME = "EventDetails";
+    private static final String KEY_EVENTS = "all_events_json";
     private static final int ANIMATION_DURATION = 300;
     private static final int BUTTON_ANIMATION_DURATION = 100;
     
@@ -59,11 +62,13 @@ public class SecondFragment extends Fragment {
     private MaterialButton buttonSelectTime;
     private TextInputEditText editTextEventName;
     private AutoCompleteTextView priorityDropdown;
+    private Context applicationContext;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        sharedPreferences = requireActivity().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        applicationContext = requireContext().getApplicationContext();
+        sharedPreferences = applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         selectedDate = Calendar.getInstance();
         selectedTime = Calendar.getInstance();
 
@@ -249,109 +254,55 @@ public class SecondFragment extends Fragment {
 
         // Validate inputs
         if (eventName.isEmpty()) {
-            Toast.makeText(requireContext(), "Please enter an event name", Toast.LENGTH_SHORT).show();
+            binding.editTextEventName.setError("Event name cannot be empty");
             return;
         }
 
-        if (eventDate.equals(getString(R.string.select_date_button_text))) {
-            Toast.makeText(requireContext(), "Please select a date", Toast.LENGTH_SHORT).show();
+        if (eventDate.equals("Select Date")) {
+            Toast.makeText(applicationContext, "Please select a date", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (eventTime.equals(getString(R.string.select_time_button_text))) {
-            Toast.makeText(requireContext(), "Please select a time", Toast.LENGTH_SHORT).show();
+        if (eventTime.equals("Select Time")) {
+            Toast.makeText(applicationContext, "Please select a time", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Build event string with correct format
-        String newEvent = eventName + "\n" + eventDate + "\n" + eventTime + "\n" + priority;
-        Log.d("SecondFragment", "New Event String: [" + newEvent + "]");
+        // Create new event
+        Event newEvent = new Event(eventName, eventDate, eventTime, priority);
 
-        // Get existing events
-        String existingEvents = sharedPreferences.getString(KEY_EVENT_LIST, "");
-        Log.d("SecondFragment", "Existing Events: [" + existingEvents + "]");
+        // Save to SharedPreferences using JSON
+        executorService.execute(() -> {
+            try {
+                // Read existing events
+                String json = sharedPreferences.getString(KEY_EVENTS, "[]");
+                List<Event> events = new Gson().fromJson(json, new TypeToken<List<Event>>(){}.getType());
+                
+                // Add new event
+                events.add(newEvent);
+                
+                // Save updated list
+                String updatedJson = new Gson().toJson(events);
+                sharedPreferences.edit()
+                    .putString(KEY_EVENTS, updatedJson)
+                    .apply();
 
-        // Combine with new event using the correct separator
-        String updatedEvents = existingEvents.isEmpty() ? newEvent : existingEvents + EVENT_SEPARATOR + newEvent;
-        Log.d("SecondFragment", "Updated Events: [" + updatedEvents + "]");
+                // Schedule notification
+                scheduleNotification(newEvent);
 
-        // Save to SharedPreferences
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEY_EVENT_LIST, updatedEvents);
-        boolean success = editor.commit();
-        Log.d("SecondFragment", "Save Success: " + success);
-
-        // Schedule alarm for notification
-        try {
-            // Parse the date and time
-            Calendar eventDateTime = Calendar.getInstance();
-            SimpleDateFormat dateTimeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-            eventDateTime.setTime(dateTimeFormat.parse(eventDate + " " + eventTime));
-
-            // Calculate trigger time (1 hour before the event)
-            eventDateTime.add(Calendar.HOUR_OF_DAY, -1);
-            long triggerTime = eventDateTime.getTimeInMillis();
-
-            // Check if the trigger time is in the past
-            if (triggerTime <= System.currentTimeMillis()) {
-                Log.d("SecondFragment", "Event is less than 1 hour away, skipping alarm scheduling");
-                return;
+                // Show success message and navigate back
+                mainHandler.post(() -> {
+                    Toast.makeText(applicationContext, "Event saved successfully", Toast.LENGTH_SHORT).show();
+                    NavHostFragment.findNavController(SecondFragment.this)
+                        .navigate(R.id.action_SecondFragment_to_FirstFragment);
+                });
+            } catch (Exception e) {
+                Log.e("SecondFragment", "Error saving event", e);
+                mainHandler.post(() -> 
+                    Toast.makeText(applicationContext, "Error saving event: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
             }
-
-            // Create intent for the broadcast receiver
-            Intent intent = new Intent(requireContext(), EventReminderReceiver.class);
-            intent.putExtra("event_name", eventName);
-            intent.putExtra("event_time", eventTime);
-
-            // Create pending intent
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                requireContext(),
-                (int) System.currentTimeMillis(), // Unique request code
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
-
-            // Get AlarmManager and schedule the alarm
-            AlarmManager alarmManager = (AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
-            if (alarmManager != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    );
-                } else {
-                    alarmManager.setExact(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    );
-                }
-                Log.d("SecondFragment", "Alarm scheduled for: " + new Date(triggerTime));
-            }
-        } catch (Exception e) {
-            Log.e("SecondFragment", "Error scheduling alarm: " + e.getMessage());
-        }
-
-        // Verify the save
-        String savedEvents = sharedPreferences.getString(KEY_EVENT_LIST, "");
-        Log.d("SecondFragment", "Verified Saved Events: [" + savedEvents + "]");
-
-        if (success) {
-            // Show success message
-            Toast.makeText(requireContext(), "Event saved!", Toast.LENGTH_SHORT).show();
-
-            // Clear form
-            binding.editTextEventName.setText("");
-            binding.buttonSelectDate.setText(R.string.select_date_button_text);
-            binding.buttonSelectTime.setText(R.string.select_time_button_text);
-            priorityDropdown.setText(getString(R.string.select_priority_button_text), false);
-
-            // Navigate up in the back stack
-            NavHostFragment.findNavController(SecondFragment.this).navigateUp();
-        } else {
-            Toast.makeText(requireContext(), "Failed to save event", Toast.LENGTH_SHORT).show();
-        }
+        });
     }
 
     private void showError(View view, String message) {
@@ -372,5 +323,58 @@ public class SecondFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         executorService.shutdown();
+    }
+
+    private void scheduleNotification(Event event) {
+        try {
+            // Parse the date and time
+            Calendar eventDateTime = Calendar.getInstance();
+            SimpleDateFormat dateTimeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+            eventDateTime.setTime(dateTimeFormat.parse(event.getDate() + " " + event.getTime()));
+
+            // Calculate trigger time (1 hour before the event)
+            eventDateTime.add(Calendar.HOUR_OF_DAY, -1);
+            long triggerTime = eventDateTime.getTimeInMillis();
+
+            // Check if the trigger time is in the past
+            if (triggerTime <= System.currentTimeMillis()) {
+                Log.d("SecondFragment", "Event is less than 1 hour away, skipping alarm scheduling");
+                return;
+            }
+
+            // Create intent for the broadcast receiver
+            Intent intent = new Intent(applicationContext, EventReminderReceiver.class);
+            intent.putExtra("event_name", event.getName());
+            intent.putExtra("event_time", event.getTime());
+
+            // Create pending intent
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                applicationContext,
+                (int) System.currentTimeMillis(), // Unique request code
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
+            // Get AlarmManager and schedule the alarm
+            AlarmManager alarmManager = (AlarmManager) applicationContext.getSystemService(Context.ALARM_SERVICE);
+            if (alarmManager != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    );
+                } else {
+                    alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    );
+                }
+                Log.d("SecondFragment", "Alarm scheduled for: " + new Date(triggerTime));
+            }
+        } catch (Exception e) {
+            Log.e("SecondFragment", "Error scheduling alarm: " + e.getMessage());
+        }
     }
 }
