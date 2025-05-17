@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -30,8 +31,11 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -308,38 +312,48 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
             requireContext(),
             R.array.sort_options,
-            android.R.layout.simple_spinner_item
+            R.layout.dropdown_item
         );
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        binding.spinnerSortEvents.setAdapter(adapter);
-
-        binding.spinnerSortEvents.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String sortOption = parent.getItemAtPosition(position).toString();
-                sortEvents(sortOption);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                // Do nothing
-            }
+        
+        AutoCompleteTextView sortDropdown = binding.spinnerSortEvents;
+        sortDropdown.setAdapter(adapter);
+        
+        // Set initial value
+        sortDropdown.setText(adapter.getItem(0).toString(), false);
+        
+        sortDropdown.setOnItemClickListener((parent, view, position, id) -> {
+            String sortOption = adapter.getItem(position).toString();
+            sortEvents(sortOption);
         });
     }
 
     private void sortEvents(String sortOption) {
         List<Event> events = new ArrayList<>(eventAdapter.getEvents());
         switch (sortOption) {
-            case "Most Recent First":
+            case "Upcoming First":
+                SimpleDateFormat dateTimeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
                 events.sort((e1, e2) -> {
-                    int dateCompare = e2.getDate().compareTo(e1.getDate());
-                    return dateCompare != 0 ? dateCompare : e2.getTime().compareTo(e1.getTime());
+                    try {
+                        Date dt1 = dateTimeFormat.parse(e1.getDate() + " " + e1.getTime());
+                        Date dt2 = dateTimeFormat.parse(e2.getDate() + " " + e2.getTime());
+                        return dt1.compareTo(dt2); // Ascending order — earliest first
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return 0;
+                    }
                 });
                 break;
-            case "Oldest First":
+            case "Upcoming Last":
+                SimpleDateFormat dateTimeFormatDesc = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
                 events.sort((e1, e2) -> {
-                    int dateCompare = e1.getDate().compareTo(e2.getDate());
-                    return dateCompare != 0 ? dateCompare : e1.getTime().compareTo(e2.getTime());
+                    try {
+                        Date dt1 = dateTimeFormatDesc.parse(e1.getDate() + " " + e1.getTime());
+                        Date dt2 = dateTimeFormatDesc.parse(e2.getDate() + " " + e2.getTime());
+                        return dt2.compareTo(dt1); // Descending order — latest first
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return 0;
+                    }
                 });
                 break;
             case "By Priority":

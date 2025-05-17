@@ -13,11 +13,13 @@
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="24dp"
         android:hint="Event Name"
+        app:startIconDrawable="@drawable/ic_event"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_percent="1.0">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/editTextEventName"
@@ -32,31 +34,35 @@
         android:id="@+id/buttonSelectDate"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="24dp"
         android:text="@string/select_date_button_text"
         android:textColor="?android:attr/textColorPrimary"
         app:icon="@drawable/ic_calendar"
         app:iconGravity="textStart"
+        app:iconPadding="8dp"
         app:iconTint="?android:attr/textColorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/eventNameLayout" />
+        app:layout_constraintTop_toBottomOf="@id/eventNameLayout"
+        app:layout_constraintWidth_percent="1.0" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/buttonSelectTime"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="56dp"
         android:layout_marginTop="16dp"
         android:text="@string/select_time_button_text"
         android:textColor="?android:attr/textColorPrimary"
         app:icon="@drawable/ic_clock"
         app:iconGravity="textStart"
+        app:iconPadding="8dp"
         app:iconTint="?android:attr/textColorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonSelectDate" />
+        app:layout_constraintTop_toBottomOf="@id/buttonSelectDate"
+        app:layout_constraintWidth_percent="1.0" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/priorityLayout"
@@ -65,9 +71,11 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:hint="Select Priority"
+        app:startIconDrawable="@drawable/ic_priority"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonSelectTime">
+        app:layout_constraintTop_toBottomOf="@id/buttonSelectTime"
+        app:layout_constraintWidth_percent="1.0">
 
         <AutoCompleteTextView
             android:id="@+id/spinnerPriority"
@@ -82,11 +90,14 @@
         android:id="@+id/buttonSaveEvent"
         style="@style/Widget.MaterialComponents.Button"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_height="60dp"
+        android:layout_marginTop="32dp"
         android:text="Save Event"
+        android:textSize="16sp"
+        app:cornerRadius="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/priorityLayout" />
+        app:layout_constraintTop_toBottomOf="@id/priorityLayout"
+        app:layout_constraintWidth_percent="1.0" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

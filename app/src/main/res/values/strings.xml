@@ -39,8 +39,8 @@
     </string-array>
 
     <string-array name="sort_options">
-        <item>Most Recent First</item>
-        <item>Oldest First</item>
+        <item>Upcoming First</item>
+        <item>Upcoming Last</item>
         <item>By Priority</item>
     </string-array>
 
@@ -52,4 +52,5 @@
     <string name="clear_all_events_button">Clear All Events</string>
     <string name="dark_mode">Dark Mode</string>
     <string name="version_number">v1.0.0</string>
+    <string name="schedule">Schedule</string>
 </resources>
