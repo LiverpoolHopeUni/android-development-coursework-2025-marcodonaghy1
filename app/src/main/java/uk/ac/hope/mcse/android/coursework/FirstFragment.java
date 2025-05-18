@@ -11,6 +11,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -175,6 +176,15 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
         EditText editName = dialogView.findViewById(R.id.editEventName);
         Button editButtonDate = dialogView.findViewById(R.id.editButtonDate);
         Button editButtonTime = dialogView.findViewById(R.id.editButtonTime);
+        
+        // Setup priority dropdown
+        AutoCompleteTextView priorityDropdown = dialogView.findViewById(R.id.editPriority);
+        ArrayAdapter<CharSequence> priorityAdapter = ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.priority_levels,
+            R.layout.dropdown_item
+        );
+        priorityDropdown.setAdapter(priorityAdapter);
 
         // Pre-fill with current values
         editName.setText(event.getName());
@@ -182,10 +192,12 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
         // Parse current date and time
         String currentDate = event.getDate();
         String currentTime = event.getTime();
+        String currentPriority = event.getPriority();
         
-        // Set initial date and time
+        // Set initial date, time and priority
         editButtonDate.setText(currentDate);
         editButtonTime.setText(currentTime);
+        priorityDropdown.setText(currentPriority, false);
 
         // Create dialog
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
@@ -230,7 +242,6 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
 
             TimePickerDialog timePickerDialog = new TimePickerDialog(
                 requireContext(),
-                android.R.style.Theme_Holo_Light_Dialog,
                 (view, selectedHour, selectedMinute) -> {
                     // Format time as HH:mm
                     String formattedTime = String.format("%02d:%02d", 
@@ -251,17 +262,20 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
             String rawName = editName.getText().toString();
             String rawDate = editButtonDate.getText().toString();
             String rawTime = editButtonTime.getText().toString();
+            String rawPriority = priorityDropdown.getText().toString();
 
             // Log raw input values
             Log.d("EditEventDialog", "Raw input values:");
             Log.d("EditEventDialog", "Name: [" + rawName + "]");
             Log.d("EditEventDialog", "Date: [" + rawDate + "]");
             Log.d("EditEventDialog", "Time: [" + rawTime + "]");
+            Log.d("EditEventDialog", "Priority: [" + rawPriority + "]");
 
             // Trim values for validation
             String name = rawName.trim();
             String date = rawDate.trim();
             String time = rawTime.trim();
+            String priority = rawPriority.trim();
 
             // Reset errors
             editName.setError(null);
@@ -286,12 +300,19 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
                 Toast.makeText(requireContext(), "Please select a time", Toast.LENGTH_SHORT).show();
                 return;
             }
+            
+            // Validate priority - early return if invalid
+            if (priority.isEmpty()) {
+                Log.d("EditEventDialog", "Validation failed: Priority is empty");
+                Toast.makeText(requireContext(), "Please select a priority", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
             // All validations passed
             Log.d("EditEventDialog", "All validations passed, updating event");
             
             // Create and update event
-            Event updatedEvent = new Event(name, date, time, event.getPriority());
+            Event updatedEvent = new Event(name, date, time, priority);
             eventAdapter.updateEventAt(position, updatedEvent);
             
             // Dismiss dialog only after successful update
@@ -319,11 +340,16 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
         sortDropdown.setAdapter(adapter);
         
         // Set initial value
-        sortDropdown.setText(adapter.getItem(0).toString(), false);
+        String defaultSort = adapter.getItem(0).toString();
+        sortDropdown.setText(defaultSort, false);
+        
+        // Ensure initial sort is applied
+        sortEvents(defaultSort);
         
         sortDropdown.setOnItemClickListener((parent, view, position, id) -> {
             String sortOption = adapter.getItem(position).toString();
             sortEvents(sortOption);
+            Toast.makeText(requireContext(), "Sorted by: " + sortOption, Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -419,29 +445,36 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
                     json, new TypeToken<List<Event>>(){}.getType()
                 );
                 
-                // Filter for non-completed events and sort by most recent first
+                // Filter for non-completed events
                 List<Event> events = allEvents.stream()
                     .filter(event -> !"Completed".equals(event.getPriority()))
-                    .sorted((e1, e2) -> {
-                        int dateCompare = e2.getDate().compareTo(e1.getDate());
-                        return dateCompare != 0 ? dateCompare : e2.getTime().compareTo(e1.getTime());
-                    })
                     .collect(Collectors.toList());
                 
                 mainHandler.post(() -> {
-                    originalEvents = new ArrayList<>(events);
-                    eventAdapter = new EventAdapter(events, requireContext(), this);
-                    binding.recyclerViewEvents.setAdapter(eventAdapter);
-                    
-                    String message = events.isEmpty() ? "No events found" : 
-                        "Loaded " + events.size() + " events";
-                    Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show();
+                    if (isAdded() && binding != null) {
+                        originalEvents = new ArrayList<>(events);
+                        eventAdapter = new EventAdapter(events, requireContext(), this);
+                        binding.recyclerViewEvents.setAdapter(eventAdapter);
+                        
+                        // Get current sort option and apply sorting
+                        AutoCompleteTextView sortDropdown = binding.spinnerSortEvents;
+                        if (sortDropdown != null && !TextUtils.isEmpty(sortDropdown.getText())) {
+                            String currentSort = sortDropdown.getText().toString();
+                            sortEvents(currentSort);
+                        }
+                        
+                        String message = events.isEmpty() ? "No events found" : 
+                            "Loaded " + events.size() + " events";
+                        Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show();
+                    }
                 });
             } catch (Exception e) {
                 Log.e("FirstFragment", "Error loading events", e);
-                mainHandler.post(() -> 
-                    Toast.makeText(applicationContext, "Error loading events", Toast.LENGTH_SHORT).show()
-                );
+                mainHandler.post(() -> {
+                    if (isAdded()) {
+                        Toast.makeText(applicationContext, "Error loading events", Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         });
     }
@@ -483,7 +516,35 @@ public class FirstFragment extends Fragment implements EventAdapter.OnEventStatu
 
     @Override
     public void onEventStatusChanged() {
-        // Reload events to update the list
-        loadEvents();
+        // When an event status changes (completed/uncompleted), reload events
+        // and ensure the sort spinner is properly set up
+        executorService.execute(() -> {
+            mainHandler.post(() -> {
+                if (isAdded() && binding != null) {
+                    // Refresh the sort dropdown adapter to ensure all options are available
+                    ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                        requireContext(),
+                        R.array.sort_options,
+                        R.layout.dropdown_item
+                    );
+                    
+                    AutoCompleteTextView sortDropdown = binding.spinnerSortEvents;
+                    String currentSelection = sortDropdown.getText().toString();
+                    
+                    // Set adapter again to refresh options
+                    sortDropdown.setAdapter(adapter);
+                    
+                    // Restore selection if it exists, otherwise use first option
+                    if (!TextUtils.isEmpty(currentSelection)) {
+                        sortDropdown.setText(currentSelection, false);
+                    } else {
+                        sortDropdown.setText(adapter.getItem(0).toString(), false);
+                    }
+                    
+                    // Load events with updated list
+                    loadEvents();
+                }
+            });
+        });
     }
 }
